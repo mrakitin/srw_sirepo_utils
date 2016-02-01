@@ -510,7 +510,6 @@ def parsed_dict(v, app, el, pp):
                 u'sourceType': unicode(_get_source_type(app)),  # u'u',
                 u'verticalPointCount': v.w_ny,  # 100
             },
-            # TODO: Ask RadiaSoft if it's correct to take everything from defaults for this report:
             u'sourceIntensityReport': get_json(static_json_url + '/srw-default.json')['models'][
                 'sourceIntensityReport'],
             u'undulator': {
@@ -524,8 +523,7 @@ def parsed_dict(v, app, el, pp):
                 u'verticalInitialPhase': v.und_phy,  # 0,
                 u'verticalSymmetry': v.und_sy,  # -1
             },
-            # TODO: Ask RadiaSoft how to process it:
-            u'watchpointReport11': {
+            u'watchpointReport': {
                 u'characteristic': None,  # 0,
                 u'horizontalPosition': None,  # 0,
                 u'horizontalRange': None,  # u'0.4',
