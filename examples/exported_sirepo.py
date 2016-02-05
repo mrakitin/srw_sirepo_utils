@@ -204,7 +204,7 @@ def get_app_params():
     return appParam
 
 def get_beamline_optics():
-    
+
     el = []
     pp = []
     el.append(srwlib.SRWLOptA("r", "a", 0.0002, 0.001, 0.0, 0.0))
@@ -252,7 +252,7 @@ def get_beamline_optics():
     pp.append([0, 0, 1.0, 0, 0, 1.0, 1.0, 1.0, 1.0])
 
     pp.append([0, 0, 1.0, 0, 0, 0.3, 2.0, 0.5, 1.0])
-    return el, pp # srwlib.SRWLOptC(el, pp)
+    return srwlib.SRWLOptC(el, pp)
 
 
 # monkey patch SRWLBeamline.set_e_beam() to allow a user defined ebeam when called from calc_all()
