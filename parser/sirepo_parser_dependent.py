@@ -14,16 +14,14 @@ try:
 except:
     import pickle
 
-import srwl_bl
-from exported_sirepo import get_beamline_optics, get_srw_params, setup_source, appParam
-
-from sirepo.template.srw import run_all_text
+# from sirepo.template.srw import run_all_text
 
 pickle_file_v = 'pickle_v.txt'
 pickle_file_op = 'pickle_op.txt'
 
 # TODO: This construction is for testing/development purposes. Need to remove it later after the code is implemented.
 if not os.path.isfile(pickle_file_v) or not os.path.isfile(pickle_file_op):
+    '''
     run_function_list = run_all_text().split('\n')
 
     # Remove empty lines:
@@ -50,6 +48,13 @@ if not os.path.isfile(pickle_file_v) or not os.path.isfile(pickle_file_op):
     exec run_function
 
     v, op = run_all_reports()
+    '''
+
+    from srwl_bl import *
+    # from exported_sirepo_new import get_beamline_optics, get_srw_params, setup_source, appParam
+    from chx import set_optics, varParam # get_beamline_optics, get_srw_params, setup_source, appParam
+    v = srwl_uti_parse_options(varParam)
+    op = set_optics(v)
 
     with open(pickle_file_v, 'w') as f:
         pickle.dump(v, f)
@@ -86,8 +91,10 @@ class Struct:
         self.__dict__.update(entries)
 
 
-args = app_processing(appParam)
-app = Struct(**args)
+# args = app_processing(v)
+# app = Struct(**args)
+
+app = v
 
 # For sourceIntensityReport:
 try:
@@ -162,14 +169,23 @@ def beamline_element(obj, idx, title, elem_type, position):
         data['verticalSize'] = obj.Dy * 1e3  # 1
 
     elif elem_type == 'mirror':
-        data['grazingAngle'] = None  # u'3.1415926',
-        data['heightAmplification'] = None  # u'1',
-        data['heightProfileFile'] = None  # u'mirror_1d.dat',
-        data['horizontalTransverseSize'] = None  # u'0.94',
-        data['orientation'] = None  # u'x'
-        data['verticalTransverseSize'] = None  # u'1'
+        keys = ['grazingAngle', 'heightAmplification', 'heightProfileFile', 'horizontalTransverseSize',
+                'orientation', 'verticalTransverseSize']
+        for key in keys:
+            data[key] = obj.input_parms[0][key]
+
+        print('')
 
     elif elem_type == 'crl':
+        keys = ['attenuationLength', 'focalPlane', 'horizontalApertureSize', 'numberOfLenses', 'radius',
+                'refractiveIndex', 'shape', 'verticalApertureSize', 'wallThickness']
+
+        for key in keys:
+            data[key] = obj.input_parms[0][key]
+
+        print('')
+
+        '''
         data['attenuationLength'] = None  # u'7.31294e-03'
         if obj.Fx > 1e20 and obj.Fy < 1e20:
             data['focalPlane'] = 2  # 2
@@ -182,6 +198,7 @@ def beamline_element(obj, idx, title, elem_type, position):
         data['shape'] = None  # 1
         data['verticalApertureSize'] = None  # u'2.4'
         data['wallThickness'] = None  # u'80.e-06'
+        '''
 
     elif elem_type == 'lens':
         data['horizontalFocalLength'] = obj.Fx  # u'3.24479',
@@ -310,7 +327,7 @@ python_dict = {
         u'electronBeam': {
             u'beamSelector': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
             u'current': v.ebm_i,  # 0.5,
-            u'energy': app.ueb_e,  # 3,
+            u'energy': None, # app.ueb_e,  # 3,
             u'energyDeviation': v.ebm_de,  # 0,
             u'horizontalAlpha': app.ueb_alpha_x,  # 0,
             u'horizontalBeta': app.ueb_beta_x,  # 2.02,
