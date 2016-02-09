@@ -2662,15 +2662,15 @@ def srwl_opt_setup_CRL(_foc_plane, _delta, _atten_len, _shape, _apert_h, _apert_
     input_parms = {
                 "attenuationLength": _atten_len, # 0.00731294,
                 "focalPlane": _foc_plane, # 2,
-                "horizontalApertureSize": _apert_h, # 1,
+                "horizontalApertureSize": _apert_h, # 1, * in mm in sirepo
                 "numberOfLenses": _n, # 1,
                 "radius": _r_min, # 0.0015,
                 "refractiveIndex": _delta, # 4.20756805e-06,
                 "shape": _shape, # 1,
                 "type": "crl",
-                "verticalApertureSize": _apert_v, # 2.4,
+                "verticalApertureSize": _apert_v, # 2.4, * in mm in sirepo
                 "wallThickness": _wall_thick, # 8e-05
-            },
+            }
 
     def ray_path_in_one_CRL(_x, _y, _foc_plane, _shape, _half_apert, _r_min, _wall_thick): #CRL is always centered
         rE2 = 0
