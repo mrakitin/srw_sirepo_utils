@@ -4,68 +4,125 @@ It's highly dependent on the external Sirepo/SRW libraries and is written to all
 SRW objects. Can be used in the future for parsing of complicated scripts.
 """
 
-import os
-import json
-import pprint
 import ast
+import json
+import os
+import pprint
+import sys
+
+import requests
+from srwl_bl import srwl_uti_std_options
 
 try:
     import cPickle as pickle
 except:
     import pickle
 
-# from sirepo.template.srw import run_all_text
 
-pickle_file_v = 'pickle_v.txt'
-pickle_file_op = 'pickle_op.txt'
+def get_json(json_url):
+    return json.loads(requests.get(json_url).text)
 
-# TODO: This construction is for testing/development purposes. Need to remove it later after the code is implemented.
-if not os.path.isfile(pickle_file_v) or not os.path.isfile(pickle_file_op):
-    '''
-    run_function_list = run_all_text().split('\n')
 
-    # Remove empty lines:
-    run_function_list = [x for x in run_function_list if x.strip() != '']
+static_url = 'https://raw.githubusercontent.com/radiasoft/sirepo/master/sirepo/package_data/static'
+static_js_url = static_url + '/js'
+static_json_url = static_url + '/json'
 
-    remove_lines = ['if __name__', 'run_all_', 'srwl_bl.']  # template for the lines to remove
-    del_rows = []  # full rows contents to remove after the loop
-    for i in range(len(run_function_list)):
-        for l in remove_lines:
-            if run_function_list[i].strip().replace('#', '').strip().find(l) == 0:
-                del_rows.append(run_function_list[i])
 
-    # Remove collected rows:
-    for i in del_rows:
-        run_function_list.remove(i)
+def list2dict(data_list):
+    """
+    The function converts list of lists to a dictionary with keys from 1st elements and values from 3rd elements.
 
-    # Add return values for further parsing:
-    run_function_list.append('    return v, op')
+    :param data_list: list of SRW parameters (e.g., 'appParam' in Sirepo's *.py files).
+    :return out_dict: dictionary with all parameters.
+    """
 
-    run_function = '\n'.join(run_function_list)
+    out_dict = {}
 
-    # replace('\ndef', 'def').replace('srwl_bl.SRWLBeamline', '\n    return v, op  # ')
+    for i in range(len(data_list)):
+        out_dict[data_list[i][0]] = data_list[i][2]
 
-    exec run_function
+    return out_dict
 
-    v, op = run_all_reports()
-    '''
 
-    from srwl_bl import *
-    # from exported_sirepo_new import get_beamline_optics, get_srw_params, setup_source, appParam
-    from chx import set_optics, varParam # get_beamline_optics, get_srw_params, setup_source, appParam
-    v = srwl_uti_parse_options(varParam)
-    op = set_optics(v)
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
-    with open(pickle_file_v, 'w') as f:
-        pickle.dump(v, f)
-    with open(pickle_file_op, 'w') as f:
-        pickle.dump(op, f)
 
-else:
-    with open(pickle_file_v, 'r') as f:
-        v = pickle.load(f)
-    with open(pickle_file_op, 'r') as f:
-        op = pickle.load(f)
+def sirepo_parser(content):
+    pickle_file_v = 'pickle_v.txt'
+    pickle_file_op = 'pickle_op.txt'
+
+    # TODO: This construction is for testing/development purposes. Need to remove it later after the code is implemented.
+    if not os.path.isfile(pickle_file_v) or not os.path.isfile(pickle_file_op):
+        '''
+        run_function_list = run_all_text().split('\n')
+
+        # Remove empty lines:
+        run_function_list = [x for x in run_function_list if x.strip() != '']
+
+        remove_lines = ['if __name__', 'run_all_', 'srwl_bl.']  # template for the lines to remove
+        del_rows = []  # full rows contents to remove after the loop
+        for i in range(len(run_function_list)):
+            for l in remove_lines:
+                if run_function_list[i].strip().replace('#', '').strip().find(l) == 0:
+                    del_rows.append(run_function_list[i])
+
+        # Remove collected rows:
+        for i in del_rows:
+            run_function_list.remove(i)
+
+        # Add return values for further parsing:
+        run_function_list.append('    return v, op')
+
+        run_function = '\n'.join(run_function_list)
+
+        # replace('\ndef', 'def').replace('srwl_bl.SRWLBeamline', '\n    return v, op  # ')
+
+        exec run_function
+
+        v, op = run_all_reports()
+        '''
+
+        # from exported_sirepo_new import get_beamline_optics, get_srw_params, setup_source, appParam
+
+        outfile = 'imported_srw_file.py'
+        with open(outfile, 'w') as f:
+            f.write(content)
+
+        package = os.path.splitext(outfile)[0]
+        name1 = 'set_optics'
+        name2 = 'varParam'
+
+        sys.path.append(os.path.abspath(os.getcwd()))
+
+        set_optics = getattr(__import__(package, fromlist=[name1]), name1)
+        varParam = getattr(__import__(package, fromlist=[name2]), name2)
+
+        # from chx import set_optics, varParam  # get_beamline_optics, get_srw_params, setup_source, appParam
+
+        v = Struct(**list2dict(varParam))  # srwl_uti_parse_options(varParam)
+        # TODO (mrakitin): update fdir and mirror files processing later.
+        op = set_optics(v)
+
+        try:
+            os.remove(outfile)
+        except:
+            pass
+
+        '''
+        with open(pickle_file_v, 'w') as f:
+            pickle.dump(v, f)
+        with open(pickle_file_op, 'w') as f:
+            pickle.dump(op, f)
+        '''
+    else:
+        with open(pickle_file_v, 'r') as f:
+            v = pickle.load(f)
+        with open(pickle_file_op, 'r') as f:
+            op = pickle.load(f)
+
+    return v, op
 
 
 # -----------------------------------------------------------------------------
@@ -93,8 +150,7 @@ class Struct:
 
 # args = app_processing(v)
 # app = Struct(**args)
-
-app = v
+# app = v
 
 # For sourceIntensityReport:
 try:
@@ -138,6 +194,7 @@ def parse_js(file_name):
     return default_drift_prop
 
 
+'''
 try:
     default_drift_prop = ast.literal_eval(parse_js(static_js_dir + '/srw.js'))
 except:
@@ -149,6 +206,44 @@ with open(srw_default_json, 'r') as f:
     srw_default = json.load(f)
 with open(schema_common_json, 'r') as f:
     schema_common = json.load(f)
+'''
+
+
+def get_default_drift():
+    """The function parses srw.js file to find the default values for drift propagation parameters, which can be
+    sometimes missed in the exported .py files (when distance = 0), but should be presented in .json files.
+
+    :return default_drift_prop: found list as a string.
+    """
+
+    try:
+        file_content = requests.get(static_js_url + '/srw.js').text
+    except:
+        file_content = u''
+
+    default_drift_prop = u'[0, 0, 1, 1, 0, 1.0, 1.0, 1.0, 1.0]'
+
+    try:  # open(file_name, 'r') as f:
+        content = file_content.split('\n')
+        for i in range(len(content)):
+            if content[i].find('function defaultDriftPropagationParams()') >= 0:
+                # Find 'return' statement:
+                for j in range(10):
+                    '''
+                        function defaultDriftPropagationParams() {
+                            return [0, 0, 1, 1, 0, 1.0, 1.0, 1.0, 1.0];
+                        }
+                    '''
+                    if content[i + j].find('return') >= 0:
+                        default_drift_prop = content[i + j].replace('return ', '').replace(';', '').strip()
+                        break
+                break
+    except:
+        pass
+
+    default_drift_prop = ast.literal_eval(default_drift_prop)
+
+    return default_drift_prop
 
 
 # Mapping all the values to a dictionary:
@@ -174,16 +269,12 @@ def beamline_element(obj, idx, title, elem_type, position):
         for key in keys:
             data[key] = obj.input_parms[0][key]
 
-        print('')
-
     elif elem_type == 'crl':
         keys = ['attenuationLength', 'focalPlane', 'horizontalApertureSize', 'numberOfLenses', 'radius',
                 'refractiveIndex', 'shape', 'verticalApertureSize', 'wallThickness']
 
         for key in keys:
-            data[key] = obj.input_parms[0][key]
-
-        print('')
+            data[key] = obj.input_parms[key]
 
         '''
         data['attenuationLength'] = None  # u'7.31294e-03'
@@ -212,7 +303,7 @@ def beamline_element(obj, idx, title, elem_type, position):
     return data
 
 
-def beamline(obj_arOpt, init_distance=20.0):
+def get_beamline(obj_arOpt, init_distance=20.0):
     """The function creates a beamline from the provided object and/or AST tree.
 
     :param obj_arOpt: SRW object containing properties of the beamline elements.
@@ -316,138 +407,213 @@ def propagation(op):
             if next_name == 'SRWLOptD':
                 prop_dict[unicode(str(counter))].append(op.arProp[i + 1])
             else:
-                prop_dict[unicode(str(counter))].append(default_drift_prop)
+                prop_dict[unicode(str(counter))].append(get_default_drift())
 
     return prop_dict
 
 
-python_dict = {
-    u'models': {
-        u'beamline': beamline(op.arOpt, v.op_r),
-        u'electronBeam': {
-            u'beamSelector': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
-            u'current': v.ebm_i,  # 0.5,
-            u'energy': None, # app.ueb_e,  # 3,
-            u'energyDeviation': v.ebm_de,  # 0,
-            u'horizontalAlpha': app.ueb_alpha_x,  # 0,
-            u'horizontalBeta': app.ueb_beta_x,  # 2.02,
-            u'horizontalDispersion': app.ueb_eta_x,  # 0,
-            u'horizontalDispersionDerivative': app.ueb_eta_x_pr,  # 0,
-            u'horizontalEmittance': app.ueb_emit_x * 1e9,  # 0.9,
-            u'horizontalPosition': v.ebm_x,  # 0,
-            u'isReadOnly': True,
-            u'name': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
-            u'rmsSpread': app.ueb_sig_e,  # 0.00089,
-            u'verticalAlpha': app.ueb_alpha_y,  # 0,
-            u'verticalBeta': app.ueb_beta_y,  # 1.06,
-            u'verticalDispersion': app.ueb_eta_y,  # 0,
-            u'verticalDispersionDerivative': app.ueb_eta_y_pr,  # 0,
-            u'verticalEmittance': app.ueb_emit_y * 1e9,  # 0.008,
-            u'verticalPosition': v.ebm_y,  # 0
-        },
-        u'electronBeams': [],
-        u'fluxReport': {
-            u'azimuthalPrecision': v.sm_pra,  # 1,
-            u'distanceFromSource': v.op_r,  # 20.5,
-            u'finalEnergy': v.sm_ef,  # 20000,
-            u'fluxType': v.sm_type,  # 1,
-            u'horizontalApertureSize': v.sm_rx * 1e3,  # u'1',
-            u'horizontalPosition': v.sm_x,  # 0,
-            u'initialEnergy': v.sm_ei,  # u'100',
-            u'longitudinalPrecision': v.sm_prl,  # 1,
-            u'photonEnergyPointCount': v.sm_ne,  # 10000,
-            u'polarization': v.sm_pol,  # 6,
-            u'verticalApertureSize': v.sm_ry * 1e3,  # u'1',
-            u'verticalPosition': v.sm_y,  # 0,
-        },
-        u'gaussianBeam': {
-            u'energyPerPulse': app.gb_energy_per_pulse,  # u'0.001',
-            u'polarization': app.gb_polarization,  # 1,
-            u'rmsPulseDuration': app.gb_rms_pulse_duration * 1e12,  # 0.1,
-            u'rmsSizeX': app.gb_rms_size_x * 1e6,  # u'9.78723',
-            u'rmsSizeY': app.gb_rms_size_y * 1e6,  # u'9.78723',
-            u'waistAngleX': app.gb_waist_angle_x,  # 0,
-            u'waistAngleY': app.gb_waist_angle_y,  # 0,
-            u'waistX': app.gb_waist_x,  # 0,
-            u'waistY': app.gb_waist_y,  # 0,
-            u'waistZ': app.gb_waist_z,  # 0,
-        },
-        u'initialIntensityReport': {
-            u'characteristic': v.si_type,  # 0,
-            u'horizontalPosition': v.w_x,  # 0,
-            u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
-            u'polarization': v.si_pol,  # 6,
-            u'precision': v.w_prec,  # Static values in .py template: 0.01,
-            u'verticalPosition': v.w_y,  # 0,
-            u'verticalRange': v.w_ry * 1e3,  # u'0.6',
-        },
-        u'intensityReport': {
-            u'distanceFromSource': v.op_r,  # 20.5,
-            u'finalEnergy': v.ss_ef,  # u'20000',
-            u'horizontalPosition': v.ss_x,  # u'0',
-            u'initialEnergy': v.ss_ei,  # u'100',
-            u'photonEnergyPointCount': v.ss_ne,  # 10000,
-            u'polarization': v.ss_pol,  # 6,
-            u'precision': v.ss_prec,  # 0.01,
-            u'verticalPosition': v.ss_y,  # 0,
-        },
-        u'multipole': {
-            u'distribution': unicode(app.mp_distribution),  # u'n',
-            u'field': app.mp_field,  # 0.4,
-            u'length': app.mp_len,  # 3,
-            u'order': app.mp_order,  # 1,
-        },
-        u'postPropagation': op.arProp[-1],  # [0, 0, u'1', 0, 0, u'0.3', u'2', u'0.5', u'1'],
-        u'powerDensityReport': {
-            u'distanceFromSource': v.op_r,  # 20.5,
-            u'horizontalPointCount': v.pw_nx,  # 100,
-            u'horizontalPosition': v.pw_x,  # u'0',
-            u'horizontalRange': v.pw_rx * 1e3,  # u'15',
-            u'method': v.pw_meth,  # 1,
-            u'precision': v.pw_pr,  # u'1',
-            u'verticalPointCount': v.pw_ny,  # 100,
-            u'verticalPosition': v.pw_y,  # u'0',
-            u'verticalRange': v.pw_ry * 1e3,  # u'15',
-        },
-        u'propagation': propagation(op),
-        u'simulation': {
-            u'facility': unicode(v.name.split()[0]),  # u'NSLS-II',
-            u'horizontalPointCount': v.w_nx,  # 100,
-            u'isExample': 0,  # u'1',
-            u'name': unicode(v.name),  # u'NSLS-II CHX beamline',
-            u'photonEnergy': v.w_e,  # u'9000',
-            u'sampleFactor': v.w_smpf,  # 1,
-            u'simulationId': None,  # u'1YA8lSnj',
-            u'sourceType': app.source_type,  # u'u',
-            u'verticalPointCount': v.w_ny,  # 100
-        },
-        u'sourceIntensityReport': srw_default['models']['sourceIntensityReport'],
-        u'undulator': {
-            u'horizontalAmplitude': v.und_bx,  # u'0',
-            u'horizontalInitialPhase': v.und_phx,  # 0,
-            u'horizontalSymmetry': v.und_sx,  # 1,
-            u'length': v.und_len,  # u'3',
-            u'longitudinalPosition': v.und_zc,  # 0,
-            u'period': v.und_per * 1e3,  # u'20',
-            u'verticalAmplitude': v.und_by,  # u'0.88770981',
-            u'verticalInitialPhase': v.und_phy,  # 0,
-            u'verticalSymmetry': v.und_sy,  # -1
-        },
-        u'watchpointReport': {
-            u'characteristic': None,  # 0,
-            u'horizontalPosition': None,  # 0,
-            u'horizontalRange': None,  # u'0.4',
-            u'polarization': None,  # 6,
-            u'precision': None,  # 0.01,
-            u'verticalPosition': None,  # 0,
-            u'verticalRange': None,  # u'0.6',
-        },
-    },
-    u'report': u'',  # u'powerDensityReport',
-    u'simulationType': u'srw',
-    u'version': unicode(schema_common['version']),  # u'20160120',
-}
+def parsed_dict(v, op):
+    std_options = Struct(**list2dict(srwl_uti_std_options()))
 
-pprint.pprint(python_dict)
+    beamlines_list = get_beamline(op.arOpt, v.op_r)
 
-print()
+    def _default_value(parm, obj, std):
+        if not hasattr(obj, parm):
+            try:
+                return getattr(std, parm)
+            except:
+                return ''
+        try:
+            return getattr(obj, parm)
+        except:
+            return ''
+
+    try:
+        idx = beamlines_list[-1]['id']
+    except:
+        idx = ''
+
+    # Format the key name to be consistent with Sirepo:
+    watchpointReport_name = u'watchpointReport{}'.format(idx)
+
+    # This dictionary will is used for both initial intensity report and for watch point:
+    initialIntensityReport = {
+        u'characteristic': v.si_type,  # 0,
+        u'horizontalPosition': v.w_x,  # 0,
+        u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
+        u'polarization': v.si_pol,  # 6,
+        u'precision': v.w_prec,  # Static values in .py template: 0.01,
+        u'verticalPosition': v.w_y,  # 0,
+        u'verticalRange': v.w_ry * 1e3,  # u'0.6',
+    }
+
+    python_dict = {
+        u'models': {
+            u'beamline': beamlines_list,  # get_beamline(op.arOpt, v.op_r),
+            u'electronBeam': {
+                u'beamSelector': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
+                u'current': v.ebm_i,  # 0.5,
+                u'energy': _default_value('ueb_e', v, std_options),  # None,  # app.ueb_e,  # 3,
+                u'energyDeviation': _default_value('ebm_de', v, std_options),  # v.ebm_de,  # 0,
+                u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options),  # None,  # app.ueb_alpha_x,  # 0,
+                u'horizontalBeta': 2.02, # _default_value('ueb_beta_x', v, std_options),  # None,  # app.ueb_beta_x,  # 2.02,
+                u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options),  # None,  # app.ueb_eta_x,  # 0,
+                u'horizontalDispersionDerivative': _default_value('ueb_eta_x_pr', v, std_options),
+                # None,  # app.ueb_eta_x_pr,  # 0,
+                u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options),
+                # None,  # app.ueb_emit_x * 1e9,  # 0.9,
+                u'horizontalPosition': v.ebm_x,  # 0,
+                u'isReadOnly': False,
+                u'name': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
+                u'rmsSpread': _default_value('ueb_sig_e', v, std_options),  # None,  # app.ueb_sig_e,  # 0.00089,
+                u'verticalAlpha': _default_value('ueb_alpha_y', v, std_options),  # None,  # app.ueb_alpha_y,  # 0,
+                u'verticalBeta': 1.06, # _default_value('ueb_beta_y', v, std_options),  # None,  # app.ueb_beta_y,  # 1.06,
+                u'verticalDispersion': _default_value('ueb_eta_y', v, std_options),  # None,  # app.ueb_eta_y,  # 0,
+                u'verticalDispersionDerivative': _default_value('ueb_eta_y_pr', v, std_options),
+                # None,  # app.ueb_eta_y_pr,  # 0,
+                u'verticalEmittance': _default_value('ueb_emit_y', v, std_options),
+                # None,  # app.ueb_emit_y * 1e9,  # 0.008,
+                u'verticalPosition': v.ebm_y,  # 0
+            },
+            u'electronBeams': [],
+            u'fluxReport': {
+                u'azimuthalPrecision': v.sm_pra,  # 1,
+                u'distanceFromSource': v.op_r,  # 20.5,
+                u'finalEnergy': v.sm_ef,  # 20000,
+                u'fluxType': v.sm_type,  # 1,
+                u'horizontalApertureSize': v.sm_rx * 1e3,  # u'1',
+                u'horizontalPosition': v.sm_x,  # 0,
+                u'initialEnergy': v.sm_ei,  # u'100',
+                u'longitudinalPrecision': v.sm_prl,  # 1,
+                u'photonEnergyPointCount': v.sm_ne,  # 10000,
+                u'polarization': v.sm_pol,  # 6,
+                u'verticalApertureSize': v.sm_ry * 1e3,  # u'1',
+                u'verticalPosition': v.sm_y,  # 0,
+            },
+            u'initialIntensityReport': {
+                u'characteristic': v.si_type,  # 0,
+                u'horizontalPosition': v.w_x,  # 0,
+                u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
+                u'polarization': v.si_pol,  # 6,
+                u'precision': v.w_prec,  # Static values in .py template: 0.01,
+                u'verticalPosition': v.w_y,  # 0,
+                u'verticalRange': v.w_ry * 1e3,  # u'0.6',
+            },
+            u'intensityReport': {
+                u'distanceFromSource': v.op_r,  # 20.5,
+                u'finalEnergy': v.ss_ef,  # u'20000',
+                u'horizontalPosition': v.ss_x,  # u'0',
+                u'initialEnergy': v.ss_ei,  # u'100',
+                u'photonEnergyPointCount': v.ss_ne,  # 10000,
+                u'polarization': v.ss_pol,  # 6,
+                u'precision': v.ss_prec,  # 0.01,
+                u'verticalPosition': v.ss_y,  # 0,
+            },
+            u'postPropagation': op.arProp[-1],  # [0, 0, u'1', 0, 0, u'0.3', u'2', u'0.5', u'1'],
+            u'powerDensityReport': {
+                u'distanceFromSource': v.op_r,  # 20.5,
+                u'horizontalPointCount': v.pw_nx,  # 100,
+                u'horizontalPosition': v.pw_x,  # u'0',
+                u'horizontalRange': v.pw_rx * 1e3,  # u'15',
+                u'method': v.pw_meth,  # 1,
+                u'precision': v.pw_pr,  # u'1',
+                u'verticalPointCount': v.pw_ny,  # 100,
+                u'verticalPosition': v.pw_y,  # u'0',
+                u'verticalRange': v.pw_ry * 1e3,  # u'15',
+            },
+            u'propagation': propagation(op),
+            u'simulation': {
+                u'facility': unicode(v.ebm_nm.split()[0]),  # unicode(v.name.split()[0]),  # u'NSLS-II',
+                u'horizontalPointCount': v.w_nx,  # 100,
+                u'isExample': 0,  # u'1',
+                u'name': unicode(v.ebm_nm),  # unicode(v.name),  # u'NSLS-II CHX beamline',
+                u'photonEnergy': v.w_e,  # u'9000',
+                u'sampleFactor': v.w_smpf,  # 1,
+                u'simulationId': '',  # None,  # u'1YA8lSnj',
+                u'sourceType': u'u',
+                # unicode(_default_value('source_type', v, std_options)),  # app.source_type,  # u'u',
+                u'verticalPointCount': v.w_ny,  # 100
+            },
+            u'sourceIntensityReport': get_json(static_json_url + '/srw-default.json')['models'][
+                'sourceIntensityReport'],
+            u'undulator': {
+                u'horizontalAmplitude': _default_value('und_bx', v, std_options),  # v.und_bx,  # u'0',
+                u'horizontalInitialPhase': _default_value('und_phx', v, std_options),  # v.und_phx,  # 0,
+                u'horizontalSymmetry': v.und_sx,  # 1,
+                u'length': v.und_len,  # u'3',
+                u'longitudinalPosition': v.und_zc,  # 0,
+                u'period': v.und_per * 1e3,  # u'20',
+                u'verticalAmplitude': _default_value('und_by', v, std_options),  # v.und_by,  # u'0.88770981',
+                u'verticalInitialPhase': _default_value('und_phy', v, std_options),  # v.und_phy,  # 0,
+                u'verticalSymmetry': v.und_sy,  # -1
+            },
+            watchpointReport_name: initialIntensityReport,
+            u'gaussianBeam': {
+                u'energyPerPulse': 0,
+                # _default_value('gbm_pen', v, std_options),  # app.gb_energy_per_pulse,  # u'0.001',
+                u'polarization': 1,  # _default_value('gbm_pol', v, std_options),  # app.gb_polarization,  # 1,
+                u'rmsPulseDuration': 0,  # _default_value('gbm_st', v, std_options),
+                # app.gb_rms_pulse_duration * 1e12,  # 0.1,
+                u'rmsSizeX': 0,  # _default_value('gbm_sx', v, std_options),  # app.gb_rms_size_x * 1e6,  # u'9.78723',
+                u'rmsSizeY': 0,  # _default_value('gbm_sy', v, std_options),  # app.gb_rms_size_y * 1e6,  # u'9.78723',
+                u'waistAngleX': 0,  # _default_value('gbm_xp', v, std_options),  # app.gb_waist_angle_x,  # 0,
+                u'waistAngleY': 0,  # _default_value('gbm_yp', v, std_options),  # app.gb_waist_angle_y,  # 0,
+                u'waistX': 0,  # _default_value('gbm_x', v, std_options),  # app.gb_waist_x,  # 0,
+                u'waistY': 0,  # _default_value('gbm_y', v, std_options),  # app.gb_waist_y,  # 0,
+                u'waistZ': 0,  # _default_value('gbm_z', v, std_options),  # app.gb_waist_z,  # 0,
+            },
+            u'multipole': {
+                u'distribution': "n", # _default_value('mp_distribution', v, std_options),
+                # unicode(app.mp_distribution),  # u'n',
+                u'field': 0, # _default_value('mp_field', v, std_options),  # app.mp_field,  # 0.4,
+                u'length': 0, # _default_value('mp_len', v, std_options),  # app.mp_len,  # 3,
+                u'order': 1, # _default_value('mp_order', v, std_options),  # app.mp_order,  # 1,
+            },
+        },
+        u'report': u'',  # u'powerDensityReport',
+        u'simulationType': u'srw',
+        u'version': unicode(get_json(static_json_url + '/schema-common.json')['version']),  # u'20160120',
+    }
+
+    '''
+
+    '''
+
+    return python_dict
+
+
+def main(py_file, debug=False):
+    with open(py_file, 'r') as f:
+        v, op = sirepo_parser(f.read())
+        python_dict = parsed_dict(v, op)
+
+        if debug:
+            pprint.pprint(python_dict)
+
+        save_file = 'parsed_sirepo.json'
+        with open(save_file, 'w') as f:
+            json.dump(
+                python_dict,
+                f,
+                sort_keys=True,
+                indent=4,
+                separators=(',', ': '),
+            )
+            print '\n\tJSON output is saved in <%s>.' % save_file
+
+    return
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Parse Sirepo-generated .py file.')
+    parser.add_argument('-p', '--py_file', dest='py_file', help='input Python file.')
+    parser.add_argument('-d', '--debug', action='store_true', dest='debug', help='enable debug information.')
+
+    args = parser.parse_args()
+    py_file = args.py_file
+    debug = args.debug
+
+    if py_file and os.path.isfile(py_file):
+        sys.exit(main(py_file, debug))

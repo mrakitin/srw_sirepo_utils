@@ -2891,7 +2891,7 @@ def srwl_opt_setup_surf_height_1d(_height_prof_data, _dim, _ang, _ang_r=0, _amp_
     """
     #To test all options!
 
-    input_parms =             {
+    input_parms = {
                 "grazingAngle": _ang, # 3.1415926,
                 "heightAmplification": _amp_coef, # 1,
                 "heightProfileFile": "",
