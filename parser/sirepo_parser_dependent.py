@@ -268,6 +268,7 @@ def beamline_element(obj, idx, title, elem_type, position):
                 'orientation', 'verticalTransverseSize']
         for key in keys:
             data[key] = obj.input_parms[0][key]
+        data['heightProfileFile'] = 'mirror_1d.dat'
 
     elif elem_type == 'crl':
         keys = ['attenuationLength', 'focalPlane', 'horizontalApertureSize', 'numberOfLenses', 'radius',
@@ -417,16 +418,22 @@ def parsed_dict(v, op):
 
     beamlines_list = get_beamline(op.arOpt, v.op_r)
 
-    def _default_value(parm, obj, std):
+    def _default_value(parm, obj, std, def_val=None):
         if not hasattr(obj, parm):
             try:
                 return getattr(std, parm)
             except:
-                return ''
+                if def_val is not None:
+                    return def_val
+                else:
+                    return ''
         try:
             return getattr(obj, parm)
         except:
-            return ''
+            if def_val is not None:
+                return def_val
+            else:
+                return ''
 
     try:
         idx = beamlines_list[-1]['id']
@@ -453,25 +460,25 @@ def parsed_dict(v, op):
             u'electronBeam': {
                 u'beamSelector': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
                 u'current': v.ebm_i,  # 0.5,
-                u'energy': _default_value('ueb_e', v, std_options),  # None,  # app.ueb_e,  # 3,
-                u'energyDeviation': _default_value('ebm_de', v, std_options),  # v.ebm_de,  # 0,
-                u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options),  # None,  # app.ueb_alpha_x,  # 0,
-                u'horizontalBeta': 2.02, # _default_value('ueb_beta_x', v, std_options),  # None,  # app.ueb_beta_x,  # 2.02,
-                u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options),  # None,  # app.ueb_eta_x,  # 0,
-                u'horizontalDispersionDerivative': _default_value('ueb_eta_x_pr', v, std_options),
+                u'energy': _default_value('ueb_e', v, std_options, 3.0),  # None,  # app.ueb_e,  # 3,
+                u'energyDeviation': _default_value('ebm_de', v, std_options, 0.0),  # v.ebm_de,  # 0,
+                u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options, 0.0),  # None,  # app.ueb_alpha_x,  # 0,
+                u'horizontalBeta': _default_value('ueb_beta_x', v, std_options, 2.02),  # None,  # app.ueb_beta_x,  # 2.02,
+                u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options, 0.0),  # None,  # app.ueb_eta_x,  # 0,
+                u'horizontalDispersionDerivative': _default_value('ueb_eta_x_pr', v, std_options, 0.0),
                 # None,  # app.ueb_eta_x_pr,  # 0,
-                u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options),
+                u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options, 9e-10),
                 # None,  # app.ueb_emit_x * 1e9,  # 0.9,
                 u'horizontalPosition': v.ebm_x,  # 0,
                 u'isReadOnly': False,
                 u'name': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
-                u'rmsSpread': _default_value('ueb_sig_e', v, std_options),  # None,  # app.ueb_sig_e,  # 0.00089,
-                u'verticalAlpha': _default_value('ueb_alpha_y', v, std_options),  # None,  # app.ueb_alpha_y,  # 0,
-                u'verticalBeta': 1.06, # _default_value('ueb_beta_y', v, std_options),  # None,  # app.ueb_beta_y,  # 1.06,
-                u'verticalDispersion': _default_value('ueb_eta_y', v, std_options),  # None,  # app.ueb_eta_y,  # 0,
-                u'verticalDispersionDerivative': _default_value('ueb_eta_y_pr', v, std_options),
+                u'rmsSpread': _default_value('ueb_sig_e', v, std_options, 0.00089),  # None,  # app.ueb_sig_e,  # 0.00089,
+                u'verticalAlpha': _default_value('ueb_alpha_y', v, std_options, 0.0),  # None,  # app.ueb_alpha_y,  # 0,
+                u'verticalBeta': _default_value('ueb_beta_y', v, std_options, 1.06),  # None,  # app.ueb_beta_y,  # 1.06,
+                u'verticalDispersion': _default_value('ueb_eta_y', v, std_options, 0.0),  # None,  # app.ueb_eta_y,  # 0,
+                u'verticalDispersionDerivative': _default_value('ueb_eta_y_pr', v, std_options, 0.0),
                 # None,  # app.ueb_eta_y_pr,  # 0,
-                u'verticalEmittance': _default_value('ueb_emit_y', v, std_options),
+                u'verticalEmittance': _default_value('ueb_emit_y', v, std_options, 8e-12),
                 # None,  # app.ueb_emit_y * 1e9,  # 0.008,
                 u'verticalPosition': v.ebm_y,  # 0
             },
@@ -537,14 +544,14 @@ def parsed_dict(v, op):
             u'sourceIntensityReport': get_json(static_json_url + '/srw-default.json')['models'][
                 'sourceIntensityReport'],
             u'undulator': {
-                u'horizontalAmplitude': _default_value('und_bx', v, std_options),  # v.und_bx,  # u'0',
-                u'horizontalInitialPhase': _default_value('und_phx', v, std_options),  # v.und_phx,  # 0,
+                u'horizontalAmplitude': _default_value('und_bx', v, std_options, 0.0),  # v.und_bx,  # u'0',
+                u'horizontalInitialPhase': _default_value('und_phx', v, std_options, 0.0),  # v.und_phx,  # 0,
                 u'horizontalSymmetry': v.und_sx,  # 1,
                 u'length': v.und_len,  # u'3',
                 u'longitudinalPosition': v.und_zc,  # 0,
                 u'period': v.und_per * 1e3,  # u'20',
-                u'verticalAmplitude': _default_value('und_by', v, std_options),  # v.und_by,  # u'0.88770981',
-                u'verticalInitialPhase': _default_value('und_phy', v, std_options),  # v.und_phy,  # 0,
+                u'verticalAmplitude': _default_value('und_by', v, std_options, 0.88770981),  # v.und_by,  # u'0.88770981',
+                u'verticalInitialPhase': _default_value('und_phy', v, std_options, 0.0),  # v.und_phy,  # 0,
                 u'verticalSymmetry': v.und_sy,  # -1
             },
             watchpointReport_name: initialIntensityReport,
