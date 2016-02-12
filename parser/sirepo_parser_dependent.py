@@ -49,109 +49,6 @@ class Struct:
         self.__dict__.update(entries)
 
 
-def sirepo_parser(content):
-    pickle_file_v = 'pickle_v.txt'
-    pickle_file_op = 'pickle_op.txt'
-
-    # TODO: This construction is for testing/development purposes. Need to remove it later after the code is implemented.
-    if not os.path.isfile(pickle_file_v) or not os.path.isfile(pickle_file_op):
-        '''
-        run_function_list = run_all_text().split('\n')
-
-        # Remove empty lines:
-        run_function_list = [x for x in run_function_list if x.strip() != '']
-
-        remove_lines = ['if __name__', 'run_all_', 'srwl_bl.']  # template for the lines to remove
-        del_rows = []  # full rows contents to remove after the loop
-        for i in range(len(run_function_list)):
-            for l in remove_lines:
-                if run_function_list[i].strip().replace('#', '').strip().find(l) == 0:
-                    del_rows.append(run_function_list[i])
-
-        # Remove collected rows:
-        for i in del_rows:
-            run_function_list.remove(i)
-
-        # Add return values for further parsing:
-        run_function_list.append('    return v, op')
-
-        run_function = '\n'.join(run_function_list)
-
-        # replace('\ndef', 'def').replace('srwl_bl.SRWLBeamline', '\n    return v, op  # ')
-
-        exec run_function
-
-        v, op = run_all_reports()
-        '''
-
-        # from exported_sirepo_new import get_beamline_optics, get_srw_params, setup_source, appParam
-
-        outfile = 'imported_srw_file.py'
-        with open(outfile, 'w') as f:
-            f.write(content)
-
-        package = os.path.splitext(outfile)[0]
-        name1 = 'set_optics'
-        name2 = 'varParam'
-
-        sys.path.append(os.path.abspath(os.getcwd()))
-
-        set_optics = getattr(__import__(package, fromlist=[name1]), name1)
-        varParam = getattr(__import__(package, fromlist=[name2]), name2)
-
-        # from chx import set_optics, varParam  # get_beamline_optics, get_srw_params, setup_source, appParam
-
-        v = Struct(**list2dict(varParam))  # srwl_uti_parse_options(varParam)
-        # TODO (mrakitin): update fdir and mirror files processing later.
-        op = set_optics(v)
-
-        try:
-            os.remove(outfile)
-        except:
-            pass
-
-        '''
-        with open(pickle_file_v, 'w') as f:
-            pickle.dump(v, f)
-        with open(pickle_file_op, 'w') as f:
-            pickle.dump(op, f)
-        '''
-    else:
-        with open(pickle_file_v, 'r') as f:
-            v = pickle.load(f)
-        with open(pickle_file_op, 'r') as f:
-            op = pickle.load(f)
-
-    return v, op
-
-
-# -----------------------------------------------------------------------------
-# Convert appParam to an object:
-def app_processing(app_list):
-    """
-    The function converts list of lists to a dictionary with keys from 1st elements and values from 3rd elements.
-
-    :param app_list: list of user-defined parameters ('appParam' in Sirepo's *.py files).
-    :return out_dict: dictionary with all parameters.
-    """
-
-    out_dict = {}
-
-    for i in range(len(app_list)):
-        out_dict[app_list[i][0]] = app_list[i][2]
-
-    return out_dict
-
-
-class Struct:
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
-
-
-# args = app_processing(v)
-# app = Struct(**args)
-# app = v
-
 # For sourceIntensityReport:
 try:
     import py.path
@@ -163,50 +60,6 @@ except:
 
 static_js_dir = static_dir + '/js'
 static_json_dir = static_dir + '/json'
-
-
-def parse_js(file_name):
-    """The function parses srw.js file to find the default values for drift propagation parameters, which can be
-    sometimes missed in the exported .py files (when distance = 0), but should be presented in .json files.
-
-    :param file_name: full path to srw.js file.
-    :return default_drift_prop: found list as a string.
-    """
-
-    default_drift_prop = None
-
-    with open(file_name, 'r') as f:
-        content = f.readlines()
-        for i in range(len(content)):
-            if content[i].find('function defaultDriftPropagationParams()') >= 0:
-                # Find 'return' statement:
-                for j in range(10):
-                    '''
-                        function defaultDriftPropagationParams() {
-                            return [0, 0, 1, 1, 0, 1.0, 1.0, 1.0, 1.0];
-                        }
-                    '''
-                    if content[i + j].find('return') >= 0:
-                        default_drift_prop = content[i + j].replace('return ', '').replace(';', '').strip()
-                        break
-                break
-
-    return default_drift_prop
-
-
-'''
-try:
-    default_drift_prop = ast.literal_eval(parse_js(static_js_dir + '/srw.js'))
-except:
-    default_drift_prop = [0, 0, 1, 1, 0, 1.0, 1.0, 1.0, 1.0]
-
-srw_default_json = static_json_dir + '/srw-default.json'
-schema_common_json = static_json_dir + '/schema-common.json'
-with open(srw_default_json, 'r') as f:
-    srw_default = json.load(f)
-with open(schema_common_json, 'r') as f:
-    schema_common = json.load(f)
-'''
 
 
 def get_default_drift():
@@ -411,7 +264,7 @@ def get_beamline(obj_arOpt, init_distance=20.0):
     return elements_list
 
 
-def propagation(op):
+def get_propagation(op):
     prop_dict = {}
     counter = 0
     for i in range(len(op.arProp) - 1):
@@ -552,7 +405,7 @@ def parsed_dict(v, op):
                 u'verticalPosition': v.pw_y,  # u'0',
                 u'verticalRange': v.pw_ry * 1e3,  # u'15',
             },
-            u'propagation': propagation(op),
+            u'propagation': get_propagation(op),
             u'simulation': {
                 u'facility': unicode(v.ebm_nm.split()[0]),  # unicode(v.name.split()[0]),  # u'NSLS-II',
                 u'horizontalPointCount': v.w_nx,  # 100,
@@ -607,31 +460,133 @@ def parsed_dict(v, op):
         u'version': unicode(get_json(static_json_url + '/schema-common.json')['version']),  # u'20160120',
     }
 
-    '''
-
-    '''
-
     return python_dict
 
 
-def main(py_file, debug=False):
-    with open(py_file, 'r') as f:
-        v, op = sirepo_parser(f.read())
-        python_dict = parsed_dict(v, op)
+class SRWParser:
+    def __init__(self, data, isFile=True, save_vars=False, save_file='parsed_sirepo.json', clean=True):
+        self.content = None
+        self.isFile = isFile
+        if self.isFile:
+            self.infile = data
+        else:
+            self.content = data
+            self.infile = 'imported_srw_file.py'
+            with open(self.infile, 'w') as f:
+                f.write(self.content)
 
-        if debug:
-            pprint.pprint(python_dict)
+        # If it's set to True, save variables in *.pickle files:
+        self.save_vars = save_vars
 
-        save_file = 'parsed_sirepo.json'
-        with open(save_file, 'w') as f:
+        # The resulted JSON contents will be saved in this file:
+        self.save_file = save_file
+
+        # If we need to clean used *.py/*.pyc files:
+        self.clean = clean
+
+        # Module name is used for __import__:
+        self.module_name = os.path.splitext(os.path.basename(self.infile))[0]
+
+        # Important objects from the parsed file:
+        self.v = None  # object containing parameters from varParam list
+        self.op = None  # object containing propagation parameters and beamline elements
+
+        # Reference to access imported values:
+        self.imported_srw_file = None
+
+        # List of mirror and other *.dat and *.pickle files:
+        self.list_of_files = []
+
+        # Directory name to store the uploaded *.dat/*.pickle files:
+        self.fdir = ''
+
+        # JSON content for Sirepo:
+        self.json_content = None
+
+        # Define the names of the function and the list to read:
+        self.set_optics_func = 'set_optics'
+        self.varParam_parm = 'varParam'
+
+        # Perform import, read 'v' variable and get *.dat/*.pickle files on creation of the object:
+        self.perform_import()
+        self.read_v()
+        self.get_files()
+
+    def perform_import(self):
+        sys.path.append(os.path.abspath(os.getcwd()))
+        self.imported_srw_file = __import__(self.module_name, fromlist=[self.set_optics_func, self.varParam_parm])
+        # Remove temporary .py and .pyc files, we don't need them anymore:
+        if self.clean:
+            for f in [self.infile, self.infile + 'c']:
+                try:
+                    os.remove(f)
+                except:
+                    pass
+
+    def read_v(self):
+        varParam = getattr(self.imported_srw_file, self.varParam_parm)
+        self.v = Struct(**list2dict(varParam))
+
+    def get_files(self):
+        for key in self.v.__dict__.keys():
+            if key.find('_ifn') >= 0:
+                self.list_of_files.append(self.v.__dict__[key])
+            if key.find('fdir') >= 0:
+                self.fdir = self.v.__dict__[key]
+
+    # Since it's a long procedure, it's done separately:
+    def read_op(self):
+        set_optics = getattr(self.imported_srw_file, self.set_optics_func)
+        self.op = set_optics(self.v)
+
+    def to_json(self):
+        if self.save_vars:
+            pickle_file_v = 'pickle_v.txt'
+            pickle_file_op = 'pickle_op.txt'
+
+            if not os.path.isfile(pickle_file_v) or not os.path.isfile(pickle_file_op):
+                self.read_op()
+
+                with open(pickle_file_v, 'w') as f:
+                    pickle.dump(self.v, f)
+                with open(pickle_file_op, 'w') as f:
+                    pickle.dump(self.op, f)
+            else:
+                with open(pickle_file_v, 'r') as f:
+                    self.v = pickle.load(f)
+                with open(pickle_file_op, 'r') as f:
+                    self.op = pickle.load(f)
+        else:
+            self.read_op()
+
+        self.json_content = parsed_dict(self.v, self.op)
+
+    def save(self):
+        with open(self.save_file, 'w') as f:
             json.dump(
-                python_dict,
+                self.json_content,
                 f,
                 sort_keys=True,
                 indent=4,
                 separators=(',', ': '),
             )
-            print '\n\tJSON output is saved in <%s>.' % save_file
+
+
+def main(py_file, debug=False):
+    o = SRWParser(py_file, clean=False)
+    # Here we may process .dat files:
+    # ...
+    print 'List of .dat files:', o.list_of_files
+
+    # Main SRW calculation and conversion to JSON:
+    o.to_json()
+
+    # Save the resulted file:
+    o.save()
+
+    if debug:
+        pprint.pprint(o.json_content)
+        print '\n\tJSON output is saved in <%s>.' % o.save_file
 
     return
 
