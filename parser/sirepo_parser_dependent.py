@@ -268,6 +268,11 @@ def beamline_element(obj, idx, title, elem_type, position):
                 'orientation', 'verticalTransverseSize']
         for key in keys:
             data[key] = obj.input_parms[0][key]
+
+        # Should be multiplied by 1000.0:
+        for key in ['horizontalTransverseSize', 'verticalTransverseSize']:
+            data[key] *= 1000.0
+
         data['heightProfileFile'] = 'mirror_1d.dat'
 
     elif elem_type == 'crl':
@@ -276,6 +281,10 @@ def beamline_element(obj, idx, title, elem_type, position):
 
         for key in keys:
             data[key] = obj.input_parms[key]
+
+        # Should be multiplied by 1000.0:
+        for key in ['horizontalApertureSize', 'verticalApertureSize']:
+            data[key] *= 1000.0
 
         '''
         data['attenuationLength'] = None  # u'7.31294e-03'
@@ -318,8 +327,9 @@ def get_beamline(obj_arOpt, init_distance=20.0):
 
     # The dictionary to count the elements of different types:
     names = {
-        'S': -1,
-        'HDM': '',
+        'S': 0,
+        'O': '',
+        'HDM': 0,
         'CRL': 0,
         'KL': '',
         'KLA': '',
@@ -346,7 +356,7 @@ def get_beamline(obj_arOpt, init_distance=20.0):
     positions_from_source.append(init_distance)  # add distance to the first element
     for i in range(len(positions)):
         dist_from_source = init_distance + sum(positions[:i + 1])
-        positions_from_source.append(dist_from_source)
+        positions_from_source.append(str(dist_from_source))
 
     counter = 0
 
@@ -360,21 +370,29 @@ def get_beamline(obj_arOpt, init_distance=20.0):
             elem_type = ''
 
             if name == 'SRWLOptA':
-                key = 'S'
+                if obj_arOpt[i].ap_or_ob == 'a':
+                    elem_type = 'aperture'
+                    key = 'S'
+                else:
+                    elem_type = 'obstacle'
+                    key = 'O'
+
                 names[key] += 1
-                elem_type = 'aperture'
 
             elif name == 'SRWLOptT':
                 # Check the type based on focal lengths of the element:
-                if obj_arOpt[i].Fx > 1e20 and obj_arOpt[i].Fy > 1e20:  # mirror, no surface curvature
-                    key = 'HDM'
-                    elem_type = 'mirror'
+                if type(obj_arOpt[i].input_parms) == tuple:
+                    elem_type = obj_arOpt[i].input_parms[0]['type']
+                else:
+                    elem_type = obj_arOpt[i].input_parms['type']
 
-                elif (obj_arOpt[i].Fx > 1e20 and obj_arOpt[i].Fy < 1e20) or \
-                        (obj_arOpt[i].Fx < 1e20 and obj_arOpt[i].Fy > 1e20):  # CRL
+                if elem_type == 'mirror':  # mirror, no surface curvature
+                    key = 'HDM'
+
+                elif elem_type == 'crl':  # CRL
                     key = 'CRL'
-                    names[key] += 1
-                    elem_type = 'crl'
+
+                names[key] += 1
 
             elif name == 'SRWLOptL':
                 key = 'KL'
@@ -462,23 +480,29 @@ def parsed_dict(v, op):
                 u'current': v.ebm_i,  # 0.5,
                 u'energy': _default_value('ueb_e', v, std_options, 3.0),  # None,  # app.ueb_e,  # 3,
                 u'energyDeviation': _default_value('ebm_de', v, std_options, 0.0),  # v.ebm_de,  # 0,
-                u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options, 0.0),  # None,  # app.ueb_alpha_x,  # 0,
-                u'horizontalBeta': _default_value('ueb_beta_x', v, std_options, 2.02),  # None,  # app.ueb_beta_x,  # 2.02,
-                u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options, 0.0),  # None,  # app.ueb_eta_x,  # 0,
+                u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options, 0.0),
+                # None,  # app.ueb_alpha_x,  # 0,
+                u'horizontalBeta': _default_value('ueb_beta_x', v, std_options, 2.02),
+                # None,  # app.ueb_beta_x,  # 2.02,
+                u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options, 0.0),
+                # None,  # app.ueb_eta_x,  # 0,
                 u'horizontalDispersionDerivative': _default_value('ueb_eta_x_pr', v, std_options, 0.0),
                 # None,  # app.ueb_eta_x_pr,  # 0,
-                u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options, 9e-10),
+                u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options, 9e-10) * 1e9,
                 # None,  # app.ueb_emit_x * 1e9,  # 0.9,
                 u'horizontalPosition': v.ebm_x,  # 0,
                 u'isReadOnly': False,
                 u'name': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
-                u'rmsSpread': _default_value('ueb_sig_e', v, std_options, 0.00089),  # None,  # app.ueb_sig_e,  # 0.00089,
+                u'rmsSpread': _default_value('ueb_sig_e', v, std_options, 0.00089),
+                # None,  # app.ueb_sig_e,  # 0.00089,
                 u'verticalAlpha': _default_value('ueb_alpha_y', v, std_options, 0.0),  # None,  # app.ueb_alpha_y,  # 0,
-                u'verticalBeta': _default_value('ueb_beta_y', v, std_options, 1.06),  # None,  # app.ueb_beta_y,  # 1.06,
-                u'verticalDispersion': _default_value('ueb_eta_y', v, std_options, 0.0),  # None,  # app.ueb_eta_y,  # 0,
+                u'verticalBeta': _default_value('ueb_beta_y', v, std_options, 1.06),
+                # None,  # app.ueb_beta_y,  # 1.06,
+                u'verticalDispersion': _default_value('ueb_eta_y', v, std_options, 0.0),
+                # None,  # app.ueb_eta_y,  # 0,
                 u'verticalDispersionDerivative': _default_value('ueb_eta_y_pr', v, std_options, 0.0),
                 # None,  # app.ueb_eta_y_pr,  # 0,
-                u'verticalEmittance': _default_value('ueb_emit_y', v, std_options, 8e-12),
+                u'verticalEmittance': _default_value('ueb_emit_y', v, std_options, 8e-12) * 1e9,
                 # None,  # app.ueb_emit_y * 1e9,  # 0.008,
                 u'verticalPosition': v.ebm_y,  # 0
             },
@@ -550,7 +574,8 @@ def parsed_dict(v, op):
                 u'length': v.und_len,  # u'3',
                 u'longitudinalPosition': v.und_zc,  # 0,
                 u'period': v.und_per * 1e3,  # u'20',
-                u'verticalAmplitude': _default_value('und_by', v, std_options, 0.88770981),  # v.und_by,  # u'0.88770981',
+                u'verticalAmplitude': _default_value('und_by', v, std_options, 0.88770981),
+                # v.und_by,  # u'0.88770981',
                 u'verticalInitialPhase': _default_value('und_phy', v, std_options, 0.0),  # v.und_phy,  # 0,
                 u'verticalSymmetry': v.und_sy,  # -1
             },
@@ -570,11 +595,11 @@ def parsed_dict(v, op):
                 u'waistZ': 0,  # _default_value('gbm_z', v, std_options),  # app.gb_waist_z,  # 0,
             },
             u'multipole': {
-                u'distribution': "n", # _default_value('mp_distribution', v, std_options),
+                u'distribution': "n",  # _default_value('mp_distribution', v, std_options),
                 # unicode(app.mp_distribution),  # u'n',
-                u'field': 0, # _default_value('mp_field', v, std_options),  # app.mp_field,  # 0.4,
-                u'length': 0, # _default_value('mp_len', v, std_options),  # app.mp_len,  # 3,
-                u'order': 1, # _default_value('mp_order', v, std_options),  # app.mp_order,  # 1,
+                u'field': 0,  # _default_value('mp_field', v, std_options),  # app.mp_field,  # 0.4,
+                u'length': 0,  # _default_value('mp_len', v, std_options),  # app.mp_len,  # 3,
+                u'order': 1,  # _default_value('mp_order', v, std_options),  # app.mp_order,  # 1,
             },
         },
         u'report': u'',  # u'powerDensityReport',
