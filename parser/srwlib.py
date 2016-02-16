@@ -2659,17 +2659,18 @@ def srwl_opt_setup_CRL(_foc_plane, _delta, _atten_len, _shape, _apert_h, _apert_
     :return: transmission (SRWLOptT) type optical element which simulates CRL
     """
 
+    # Added by MR on 16.02.2016:
     input_parms = {
-                "attenuationLength": _atten_len, # 0.00731294,
-                "focalPlane": _foc_plane, # 2,
-                "horizontalApertureSize": _apert_h, # 1, * in mm in sirepo
-                "numberOfLenses": _n, # 1,
-                "radius": _r_min, # 0.0015,
-                "refractiveIndex": _delta, # 4.20756805e-06,
-                "shape": _shape, # 1,
+                "attenuationLength": _atten_len,
+                "focalPlane": _foc_plane,
+                "horizontalApertureSize": _apert_h,
+                "numberOfLenses": _n,
+                "radius": _r_min,
+                "refractiveIndex": _delta,
+                "shape": _shape,
                 "type": "crl",
-                "verticalApertureSize": _apert_v, # 2.4, * in mm in sirepo
-                "wallThickness": _wall_thick, # 8e-05
+                "verticalApertureSize": _apert_v,
+                "wallThickness": _wall_thick,
             }
 
     def ray_path_in_one_CRL(_x, _y, _foc_plane, _shape, _half_apert, _r_min, _wall_thick): #CRL is always centered
@@ -2787,6 +2788,7 @@ def srwl_opt_setup_CRL(_foc_plane, _delta, _atten_len, _shape, _apert_h, _apert_
             x += hx
         y += hy
 
+    # Added by MR on 16.02.2016:
     opT.input_parms = input_parms
 
     return opT
@@ -2891,15 +2893,16 @@ def srwl_opt_setup_surf_height_1d(_height_prof_data, _dim, _ang, _ang_r=0, _amp_
     """
     #To test all options!
 
+    # Added by MR on 16.02.2016:
     input_parms = {
-                "grazingAngle": _ang, # 3.1415926,
-                "heightAmplification": _amp_coef, # 1,
+                "grazingAngle": _ang,
+                "heightAmplification": _amp_coef,
                 "heightProfileFile": "",
-                "horizontalTransverseSize": _size_x, # 0.94,
-                "orientation": _dim, # "x",
+                "horizontalTransverseSize": _size_x,
+                "orientation": _dim,
                 "type": "mirror",
-                "verticalTransverseSize": _size_y, # 1
-            },
+                "verticalTransverseSize": _size_y,
+            }
 
     if(_ang_r == 0): _ang_r = _ang
     sinAng = sin(_ang)
@@ -2993,6 +2996,7 @@ def srwl_opt_setup_surf_height_1d(_height_prof_data, _dim, _ang, _ang_r=0, _amp_
             x += xStep
         y += yStep
 
+    # Added by MR on 16.02.2016:
     optSlopeErr.input_parms = input_parms
 
     return optSlopeErr
