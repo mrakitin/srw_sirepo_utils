@@ -120,7 +120,10 @@ def beamline_element(obj, idx, title, elem_type, position):
         keys = ['grazingAngle', 'heightAmplification', 'heightProfileFile', 'horizontalTransverseSize',
                 'orientation', 'verticalTransverseSize']
         for key in keys:
-            data[key] = obj.input_parms[0][key]
+            if type(obj.input_parms) == tuple:
+                data[key] = obj.input_parms[0][key]
+            else:
+                data[key] = obj.input_parms[key]
 
         # Should be multiplied by 1000.0:
         for key in ['horizontalTransverseSize', 'verticalTransverseSize']:
@@ -317,12 +320,13 @@ def parsed_dict(v, op):
     # This dictionary will is used for both initial intensity report and for watch point:
     initialIntensityReport = {
         u'characteristic': v.si_type,  # 0,
-        u'horizontalPosition': v.w_x,  # 0,
-        u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
+        # u'horizontalPosition': v.w_x,  # 0,
+        # u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
+        u'fieldUnits': 1,
         u'polarization': v.si_pol,  # 6,
         u'precision': v.w_prec,  # Static values in .py template: 0.01,
-        u'verticalPosition': v.w_y,  # 0,
-        u'verticalRange': v.w_ry * 1e3,  # u'0.6',
+        # u'verticalPosition': v.w_y,  # 0,
+        # u'verticalRange': v.w_ry * 1e3,  # u'0.6',
     }
 
     python_dict = {
@@ -374,15 +378,7 @@ def parsed_dict(v, op):
                 u'verticalApertureSize': v.sm_ry * 1e3,  # u'1',
                 u'verticalPosition': v.sm_y,  # 0,
             },
-            u'initialIntensityReport': {
-                u'characteristic': v.si_type,  # 0,
-                u'horizontalPosition': v.w_x,  # 0,
-                u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
-                u'polarization': v.si_pol,  # 6,
-                u'precision': v.w_prec,  # Static values in .py template: 0.01,
-                u'verticalPosition': v.w_y,  # 0,
-                u'verticalRange': v.w_ry * 1e3,  # u'0.6',
-            },
+            u'initialIntensityReport': initialIntensityReport,
             u'intensityReport': {
                 u'distanceFromSource': v.op_r,  # 20.5,
                 u'finalEnergy': v.ss_ef,  # u'20000',
@@ -392,6 +388,19 @@ def parsed_dict(v, op):
                 u'polarization': v.ss_pol,  # 6,
                 u'precision': v.ss_prec,  # 0.01,
                 u'verticalPosition': v.ss_y,  # 0,
+            },
+            u'multiElectronAnimation': {
+                u'horizontalPosition': 0,
+                u'horizontalRange': 0.4,
+                u'stokesParameter': '0',
+                u'verticalPosition': 0,
+                u'verticalRange': 0.6,
+            },
+            u'multipole': {
+                u'distribution': 'n',
+                u'field': 0,
+                u'length': 0,
+                u'order': 1,
             },
             u'postPropagation': op.arProp[-1],  # [0, 0, u'1', 0, 0, u'0.3', u'2', u'0.5', u'1'],
             u'powerDensityReport': {
@@ -409,14 +418,19 @@ def parsed_dict(v, op):
             u'simulation': {
                 u'facility': unicode(v.ebm_nm.split()[0]),  # unicode(v.name.split()[0]),  # u'NSLS-II',
                 u'horizontalPointCount': v.w_nx,  # 100,
+                u'horizontalPosition': v.w_x,  # 0,
+                u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
                 u'isExample': 0,  # u'1',
                 u'name': unicode(v.ebm_nm),  # unicode(v.name),  # u'NSLS-II CHX beamline',
                 u'photonEnergy': v.w_e,  # u'9000',
                 u'sampleFactor': v.w_smpf,  # 1,
+                u'samplingMethod': 1,  # 1 if v.w_smpf > 0 else 2,
                 u'simulationId': '',  # None,  # u'1YA8lSnj',
                 u'sourceType': u'u',
                 # unicode(_default_value('source_type', v, std_options)),  # app.source_type,  # u'u',
                 u'verticalPointCount': v.w_ny,  # 100
+                u'verticalPosition': v.w_y,  # 0,
+                u'verticalRange': v.w_ry * 1e3,  # u'0.6',
             },
             u'sourceIntensityReport': get_json(static_json_url + '/srw-default.json')['models'][
                 'sourceIntensityReport'],
@@ -447,13 +461,6 @@ def parsed_dict(v, op):
                 u'waistY': 0,  # _default_value('gbm_y', v, std_options),  # app.gb_waist_y,  # 0,
                 u'waistZ': 0,  # _default_value('gbm_z', v, std_options),  # app.gb_waist_z,  # 0,
             },
-            u'multipole': {
-                u'distribution': "n",  # _default_value('mp_distribution', v, std_options),
-                # unicode(app.mp_distribution),  # u'n',
-                u'field': 0,  # _default_value('mp_field', v, std_options),  # app.mp_field,  # 0.4,
-                u'length': 0,  # _default_value('mp_len', v, std_options),  # app.mp_len,  # 3,
-                u'order': 1,  # _default_value('mp_order', v, std_options),  # app.mp_order,  # 1,
-            },
         },
         u'report': u'',  # u'powerDensityReport',
         u'simulationType': u'srw',
@@ -464,8 +471,13 @@ def parsed_dict(v, op):
 
 
 class SRWParser:
-    def __init__(self, data, isFile=True, save_vars=False, save_file='parsed_sirepo.json', clean=True):
+    def __init__(self, data, lib_dir=None, isFile=True, save_vars=False, save_file='parsed_sirepo.json', clean=True):
+
+        self.initial_lib_dir = lib_dir  # initial directory with mirror .dat files
+        self.lib_dir = lib_dir  # changeable directory with mirror .dat files
+
         self.content = None
+
         self.isFile = isFile
         if self.isFile:
             self.infile = data
@@ -495,10 +507,7 @@ class SRWParser:
         self.imported_srw_file = None
 
         # List of mirror and other *.dat and *.pickle files:
-        self.list_of_files = []
-
-        # Directory name to store the uploaded *.dat/*.pickle files:
-        self.fdir = ''
+        self.list_of_files = None
 
         # JSON content for Sirepo:
         self.json_content = None
@@ -511,6 +520,9 @@ class SRWParser:
         self.perform_import()
         self.read_v()
         self.get_files()
+
+        if self.initial_lib_dir:
+            self.replace_files()
 
     def perform_import(self):
         sys.path.append(os.path.abspath(os.getcwd()))
@@ -528,11 +540,20 @@ class SRWParser:
         self.v = Struct(**list2dict(varParam))
 
     def get_files(self):
+        self.list_of_files = []
         for key in self.v.__dict__.keys():
             if key.find('_ifn') >= 0:
                 self.list_of_files.append(self.v.__dict__[key])
             if key.find('fdir') >= 0:
-                self.fdir = self.v.__dict__[key]
+                self.lib_dir = self.v.__dict__[key]
+
+    def replace_files(self):
+        for key in self.v.__dict__.keys():
+            if key.find('_ifn') >= 0:
+                self.v.__dict__[key] = 'mirror_1d.dat'
+            if key.find('fdir') >= 0:
+                self.v.__dict__[key] = self.initial_lib_dir
+        self.get_files()
 
     # Since it's a long procedure, it's done separately:
     def read_op(self):
@@ -577,6 +598,7 @@ def main(py_file, debug=False):
     # Here we may process .dat files:
     # ...
     print 'List of .dat files:', o.list_of_files
+    print 'Lib dir           :', o.lib_dir
 
     # Main SRW calculation and conversion to JSON:
     o.to_json()
