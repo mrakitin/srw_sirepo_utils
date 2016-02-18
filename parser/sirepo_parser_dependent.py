@@ -163,8 +163,107 @@ def beamline_element(obj, idx, title, elem_type, position):
         data['verticalFocalLength'] = obj.Fy  # u'1.e+23'
         data['verticalOffset'] = obj.y  # 0
 
-    else:
+    elif elem_type == 'sphericalMirror':
+        '''
+                "grazingAngle": 13.9626,
+                "heightAmplification": 1,
+                "heightProfileFile": null,
+                "normalVectorX": 0,
+                "normalVectorY": 0.9999025244842406,
+                "normalVectorZ": -0.013962146326506367,
+                "orientation": "x",
+                "radius": 1049,
+                "sagittalSize": 0.11,
+                "tangentialSize": 0.3,
+                "tangentialVectorX": 0,
+                "tangentialVectorY": 0.013962146326506367,
+        '''
+        # Fixed values in srw.js:
+        data['grazingAngle'] = 13.9626000172
+        data['heightAmplification'] = 1
+        data['heightProfileFile'] = u'null'
+        data['orientation'] = u'x'
+
+        data['normalVectorX'] = obj.nvx
+        data['normalVectorY'] = obj.nvy
+        data['normalVectorZ'] = obj.nvz
+        data['radius'] = obj.rad
+        data['sagittalSize'] = obj.ds
+        data['tangentialSize'] = obj.dt
+        data['tangentialVectorX'] = obj.tvx
+        data['tangentialVectorY'] = obj.tvy
+
+    elif elem_type == 'grating':
+        '''
+                "diffractionOrder": -1,
+                "grazingAngle": 25.1327,
+                "grooveDensity0": 100,
+                "grooveDensity1": 0.02666,
+                "grooveDensity2": 7.556e-09,
+                "grooveDensity3": -1.89085e-09,
+                "grooveDensity4": -5.04636e-13,
+                "normalVectorX": 0,
+                "normalVectorY": -0.9996841903193807,
+                "normalVectorZ": -0.025130054227639583,
+                "sagittalSize": 0.05,
+                "tangentialSize": 0.22,
+                "tangentialVectorX": 0,
+                "tangentialVectorY": -0.025130054227639583,
+        '''
+        # Fixed values in srw.js:
+        data['grazingAngle'] = 12.9555790185373
+
+        data['diffractionOrder'] = obj.m
+        data['grooveDensity0'] = obj.grDen
+        data['grooveDensity1'] = obj.grDen1
+        data['grooveDensity2'] = obj.grDen2
+        data['grooveDensity3'] = obj.grDen3
+        data['grooveDensity4'] = obj.grDen4
+        data['normalVectorX'] = obj.mirSub.nvx
+        data['normalVectorY'] = obj.mirSub.nvy
+        data['normalVectorZ'] = obj.mirSub.nvz
+        data['sagittalSize'] = obj.mirSub.ds
+        data['tangentialSize'] = obj.mirSub.dt
+        data['tangentialVectorX'] = obj.mirSub.tvx
+        data['tangentialVectorY'] = obj.mirSub.tvy
+
+    elif elem_type == 'ellipsoidMirror':
+        '''
+                "firstFocusLength": 137.4,
+                "focalLength": 2,
+                "grazingAngle": 13.9626,
+                "heightAmplification": 1,
+                "heightProfileFile": null,
+                "normalVectorX": -0.9999025244842406,
+                "normalVectorY": 0,
+                "normalVectorZ": -0.013962146326506367,
+                "orientation": "x",
+                "sagittalSize": 0.025,
+                "tangentialSize": 0.4,
+                "tangentialVectorX": -0.013962146326506367,
+                "tangentialVectorY": 0,
+        '''
+        # Fixed values in srw.js:
+        data['heightAmplification'] = 1
+        data['heightProfileFile'] = u'null'
+        data['orientation'] = u'x'
+
+        data['firstFocusLength'] = obj.p
+        data['focalLength'] = obj.q
+        data['grazingAngle'] = obj.angGraz * 1e3
+        data['normalVectorX'] = obj.nvx
+        data['normalVectorY'] = obj.nvy
+        data['normalVectorZ'] = obj.nvz
+        data['sagittalSize'] = obj.ds
+        data['tangentialSize'] = obj.dt
+        data['tangentialVectorX'] = obj.tvx
+        data['tangentialVectorY'] = obj.tvy
+
+    elif elem_type == 'watch':
         pass
+
+    else:
+        raise Exception('Element type <{}> does not exist.'.format(elem_type))
 
     return data
 
@@ -184,11 +283,13 @@ def get_beamline(obj_arOpt, init_distance=20.0):
     # The dictionary to count the elements of different types:
     names = {
         'S': 0,
-        'O': '',
+        'O': 0,
         'HDM': 0,
         'CRL': 0,
-        'KL': '',
-        'KLA': '',
+        'KL': 0,
+        'KLA': 0,
+        'M': 0,  # mirror
+        'G': 0,  # grating
         'Sample': '',
     }
 
@@ -233,8 +334,6 @@ def get_beamline(obj_arOpt, init_distance=20.0):
                     elem_type = 'obstacle'
                     key = 'O'
 
-                names[key] += 1
-
             elif name == 'SRWLOptT':
                 # Check the type based on focal lengths of the element:
                 if type(obj_arOpt[i].input_parms) == tuple:
@@ -248,15 +347,30 @@ def get_beamline(obj_arOpt, init_distance=20.0):
                 elif elem_type == 'crl':  # CRL
                     key = 'CRL'
 
-                names[key] += 1
-
             elif name == 'SRWLOptL':
                 key = 'KL'
                 elem_type = 'lens'
 
+            elif name == 'SRWLOptMirSph':
+                key = 'M'
+                elem_type = 'sphericalMirror'
+
+            elif name == 'SRWLOptG':
+                key = 'G'
+                elem_type = 'grating'
+
+            elif name == 'SRWLOptMirEl':
+                key = 'M'
+                elem_type = 'ellipsoidMirror'
+
             if i == len(obj_arOpt) - 1:
                 key = 'Sample'
                 elem_type = 'watch'
+
+            try:
+                names[key] += 1
+            except:
+                pass
 
             title = key + str(names[key])
 
@@ -525,7 +639,12 @@ class SRWParser:
             self.replace_files()
 
     def perform_import(self):
-        sys.path.append(os.path.abspath(os.getcwd()))
+        if self.isFile:
+            dir_with_script = os.path.dirname(os.path.abspath(self.infile))
+        else:
+            dir_with_script = os.getcwd()
+
+        sys.path.append(os.path.abspath(dir_with_script))
         self.imported_srw_file = __import__(self.module_name, fromlist=[self.set_optics_func, self.varParam_parm])
         # Remove temporary .py and .pyc files, we don't need them anymore:
         if self.clean:
