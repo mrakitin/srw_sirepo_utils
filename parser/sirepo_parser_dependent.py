@@ -5,6 +5,7 @@ SRW objects. Can be used in the future for parsing of complicated scripts.
 """
 
 import ast
+import datetime
 import json
 import os
 import pprint
@@ -105,16 +106,16 @@ def beamline_element(obj, idx, title, elem_type, position):
 
     data['id'] = idx
     data['type'] = unicode(elem_type)
-    data['title'] = unicode(title)  # u'S0',
-    data['position'] = position  # 20.5
+    data['title'] = unicode(title)
+    data['position'] = position
 
     if elem_type == 'aperture':
-        data['shape'] = unicode(obj.shape)  # u'r'
+        data['shape'] = unicode(obj.shape)
 
-        data['horizontalOffset'] = obj.x  # 0
-        data['verticalOffset'] = obj.y  # 0,
-        data['horizontalSize'] = obj.Dx * 1e3  # 0.2
-        data['verticalSize'] = obj.Dy * 1e3  # 1
+        data['horizontalOffset'] = obj.x
+        data['verticalOffset'] = obj.y
+        data['horizontalSize'] = obj.Dx * 1e3
+        data['verticalSize'] = obj.Dy * 1e3
 
     elif elem_type == 'mirror':
         keys = ['grazingAngle', 'heightAmplification', 'heightProfileFile', 'horizontalTransverseSize',
@@ -181,7 +182,7 @@ def beamline_element(obj, idx, title, elem_type, position):
         # Fixed values in srw.js:
         data['grazingAngle'] = 13.9626000172
         data['heightAmplification'] = 1
-        data['heightProfileFile'] = u'null'
+        data['heightProfileFile'] = None
         data['orientation'] = u'x'
 
         data['normalVectorX'] = obj.nvx
@@ -245,7 +246,7 @@ def beamline_element(obj, idx, title, elem_type, position):
         '''
         # Fixed values in srw.js:
         data['heightAmplification'] = 1
-        data['heightProfileFile'] = u'null'
+        data['heightProfileFile'] = None
         data['orientation'] = u'x'
 
         data['firstFocusLength'] = obj.p
@@ -288,14 +289,17 @@ def get_beamline(obj_arOpt, init_distance=20.0):
         'CRL': 0,
         'KL': 0,
         'KLA': 0,
+        'AUX': 0,
         'M': 0,  # mirror
         'G': 0,  # grating
         'Sample': '',
     }
 
-    positions = []  # a list with sequence of distances between elements
-    positions_from_source = []  # a list with sequence of distances from source
+    positions = []  # a list of dictionaries with sequence of distances between elements
+    # positions_from_source = []  # a list with sequence of distances from source
 
+    d_src = init_distance
+    counter = 0
     for i in range(num_elements):
         name = obj_arOpt[i].__class__.__name__
         try:
@@ -303,27 +307,19 @@ def get_beamline(obj_arOpt, init_distance=20.0):
         except:
             next_name = None
 
-        if name != 'SRWLOptD':  # or i == len(obj_arOpt) - 1:  # not drift
-            # Check if the next element is drift, else put 0 distance:
-            if next_name == 'SRWLOptD':
-                positions.append(obj_arOpt[i + 1].L)
-            else:
-                positions.append(0.0)
+        if name == 'SRWLOptD':
+            d = obj_arOpt[i].L
+        else:
+            d = 0.0
+        d_src += d
 
-    positions_from_source.append(init_distance)  # add distance to the first element
-    for i in range(len(positions)):
-        dist_from_source = init_distance + sum(positions[:i + 1])
-        positions_from_source.append(str(dist_from_source))
+        if (len(positions) == 0) or \
+                (name != 'SRWLOptD') or \
+                (name == 'SRWLOptD' and next_name == 'SRWLOptD') or \
+                (name == 'SRWLOptD' and (i + 1) == num_elements):
 
-    counter = 0
-
-    for i in range(num_elements):
-        name = obj_arOpt[i].__class__.__name__
-        if name != 'SRWLOptD' or i == len(obj_arOpt) - 1:  # drifts are not included in the list, except the last drift
             counter += 1
 
-            data = []
-            title = ''
             elem_type = ''
 
             if name == 'SRWLOptA':
@@ -363,7 +359,12 @@ def get_beamline(obj_arOpt, init_distance=20.0):
                 key = 'M'
                 elem_type = 'ellipsoidMirror'
 
-            if i == len(obj_arOpt) - 1:
+            elif name == 'SRWLOptD':
+                key = 'AUX'
+                elem_type = 'watch'
+
+            # Last element is Sample:
+            if (name == 'SRWLOptD' and (i + 1) == num_elements):
                 key = 'Sample'
                 elem_type = 'watch'
 
@@ -374,9 +375,25 @@ def get_beamline(obj_arOpt, init_distance=20.0):
 
             title = key + str(names[key])
 
-            data = beamline_element(obj_arOpt[i], counter, title, elem_type, positions_from_source[counter - 1])
+            positions.append({
+                'id': counter,
+                'object': obj_arOpt[i],
+                'elem_class': name,
+                'elem_type': elem_type,
+                'title': title,
+                'dist': d,
+                'dist_source': d_src,
+            })
 
-            elements_list.append(data)
+    for i in range(len(positions)):
+        data = beamline_element(
+            positions[i]['object'],
+            positions[i]['id'],
+            positions[i]['title'],
+            positions[i]['elem_type'],
+            positions[i]['dist_source']
+        )
+        elements_list.append(data)
 
     return elements_list
 
@@ -390,7 +407,10 @@ def get_propagation(op):
             next_name = op.arOpt[i + 1].__class__.__name__
         except:
             next_name = None
-        if name != 'SRWLOptD' or i == len(op.arProp) - 2:  # drifts are not included in the list, except the last drift
+
+        if (name != 'SRWLOptD') or \
+                (name == 'SRWLOptD' and next_name == 'SRWLOptD') or \
+                ((i + 1) == len(op.arProp) - 1):  # exclude last drift
             counter += 1
             prop_dict[unicode(str(counter))] = [op.arProp[i]]
             if next_name == 'SRWLOptD':
@@ -401,7 +421,7 @@ def get_propagation(op):
     return prop_dict
 
 
-def parsed_dict(v, op):
+def parsed_dict(v, op, fname=None):
     std_options = Struct(**list2dict(srwl_uti_std_options()))
 
     beamlines_list = get_beamline(op.arOpt, v.op_r)
@@ -423,92 +443,157 @@ def parsed_dict(v, op):
             else:
                 return ''
 
-    try:
-        idx = beamlines_list[-1]['id']
-    except:
-        idx = ''
-
-    # Format the key name to be consistent with Sirepo:
-    watchpointReport_name = u'watchpointReport{}'.format(idx)
-
     # This dictionary will is used for both initial intensity report and for watch point:
     initialIntensityReport = {
-        u'characteristic': v.si_type,  # 0,
-        # u'horizontalPosition': v.w_x,  # 0,
-        # u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
-        u'fieldUnits': 1,
-        u'polarization': v.si_pol,  # 6,
-        u'precision': v.w_prec,  # Static values in .py template: 0.01,
-        # u'verticalPosition': v.w_y,  # 0,
-        # u'verticalRange': v.w_ry * 1e3,  # u'0.6',
+        u'characteristic': v.si_type,
+        u'fieldUnits': 2,
+        u'polarization': v.si_pol,
+        u'precision': v.w_prec,
+        u'sampleFactor': 0,
     }
+
+    # Default electron beam:
+    if hasattr(v, 'ebm_nm'):
+        source_type = u'u'
+
+        electronBeam = {
+            u'beamSelector': unicode(v.ebm_nm),
+            u'current': v.ebm_i,
+            u'energy': _default_value('ueb_e', v, std_options, 3.0),
+            u'energyDeviation': _default_value('ebm_de', v, std_options, 0.0),
+            u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options, 0.0),
+            u'horizontalBeta': _default_value('ueb_beta_x', v, std_options, 2.02),
+            u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options, 0.0),
+            u'horizontalDispersionDerivative': _default_value('ueb_eta_x_pr', v, std_options, 0.0),
+            u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options, 9e-10) * 1e9,
+            u'horizontalPosition': v.ebm_x,
+            u'isReadOnly': False,
+            u'name': unicode(v.ebm_nm),
+            u'rmsSpread': _default_value('ueb_sig_e', v, std_options, 0.00089),
+            u'verticalAlpha': _default_value('ueb_alpha_y', v, std_options, 0.0),
+            u'verticalBeta': _default_value('ueb_beta_y', v, std_options, 1.06),
+            u'verticalDispersion': _default_value('ueb_eta_y', v, std_options, 0.0),
+            u'verticalDispersionDerivative': _default_value('ueb_eta_y_pr', v, std_options, 0.0),
+            u'verticalEmittance': _default_value('ueb_emit_y', v, std_options, 8e-12) * 1e9,
+            u'verticalPosition': v.ebm_y,
+        }
+
+        undulator = {
+            u'horizontalAmplitude': _default_value('und_bx', v, std_options, 0.0),
+            u'horizontalInitialPhase': _default_value('und_phx', v, std_options, 0.0),
+            u'horizontalSymmetry': v.und_sx,
+            u'length': v.und_len,
+            u'longitudinalPosition': v.und_zc,
+            u'period': v.und_per * 1e3,
+            u'verticalAmplitude': _default_value('und_by', v, std_options, 0.88770981),
+            u'verticalInitialPhase': _default_value('und_phy', v, std_options, 0.0),
+            u'verticalSymmetry': v.und_sy,
+        }
+
+        gaussianBeam = {
+            u'energyPerPulse': None,
+            u'polarization': 1,
+            u'rmsPulseDuration': None,
+            u'rmsSizeX': None,
+            u'rmsSizeY': None,
+            u'waistAngleX': None,
+            u'waistAngleY': None,
+            u'waistX': None,
+            u'waistY': None,
+            u'waistZ': None,
+        }
+
+    else:
+        source_type = u'g'
+        electronBeam = {
+            u'beamSelector': None,
+            u'current': None,
+            u'energy': None,
+            u'energyDeviation': None,
+            u'horizontalAlpha': None,
+            u'horizontalBeta': 1.0,
+            u'horizontalDispersion': None,
+            u'horizontalDispersionDerivative': None,
+            u'horizontalEmittance': None,
+            u'horizontalPosition': None,
+            u'isReadOnly': False,
+            u'name': None,
+            u'rmsSpread': None,
+            u'verticalAlpha': None,
+            u'verticalBeta': 1.0,
+            u'verticalDispersion': None,
+            u'verticalDispersionDerivative': None,
+            u'verticalEmittance': None,
+            u'verticalPosition': None,
+        }
+        undulator = {
+            u'horizontalAmplitude': None,
+            u'horizontalInitialPhase': None,
+            u'horizontalSymmetry': 1,
+            u'length': None,
+            u'longitudinalPosition': None,
+            u'period': None,
+            u'verticalAmplitude': None,
+            u'verticalInitialPhase': None,
+            u'verticalSymmetry': 1,
+        }
+
+        gaussianBeam = {
+            u'energyPerPulse': _default_value('gbm_pen', v, std_options),
+            u'polarization': _default_value('gbm_pol', v, std_options),
+            u'rmsPulseDuration': _default_value('gbm_st', v, std_options) * 1e12,
+            u'rmsSizeX': _default_value('gbm_sx', v, std_options) * 1e6,
+            u'rmsSizeY': _default_value('gbm_sy', v, std_options) * 1e6,
+            u'waistAngleX': _default_value('gbm_xp', v, std_options),
+            u'waistAngleY': _default_value('gbm_yp', v, std_options),
+            u'waistX': _default_value('gbm_x', v, std_options),
+            u'waistY': _default_value('gbm_y', v, std_options),
+            u'waistZ': _default_value('gbm_z', v, std_options),
+        }
+
+    import_datetime = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
+    if fname:
+        name = 'Imported file <{}> ({})'.format(fname, import_datetime)
+    else:
+        name = 'Imported file ({})'.format(import_datetime)
 
     python_dict = {
         u'models': {
-            u'beamline': beamlines_list,  # get_beamline(op.arOpt, v.op_r),
-            u'electronBeam': {
-                u'beamSelector': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
-                u'current': v.ebm_i,  # 0.5,
-                u'energy': _default_value('ueb_e', v, std_options, 3.0),  # None,  # app.ueb_e,  # 3,
-                u'energyDeviation': _default_value('ebm_de', v, std_options, 0.0),  # v.ebm_de,  # 0,
-                u'horizontalAlpha': _default_value('ueb_alpha_x', v, std_options, 0.0),
-                # None,  # app.ueb_alpha_x,  # 0,
-                u'horizontalBeta': _default_value('ueb_beta_x', v, std_options, 2.02),
-                # None,  # app.ueb_beta_x,  # 2.02,
-                u'horizontalDispersion': _default_value('ueb_eta_x', v, std_options, 0.0),
-                # None,  # app.ueb_eta_x,  # 0,
-                u'horizontalDispersionDerivative': _default_value('ueb_eta_x_pr', v, std_options, 0.0),
-                # None,  # app.ueb_eta_x_pr,  # 0,
-                u'horizontalEmittance': _default_value('ueb_emit_x', v, std_options, 9e-10) * 1e9,
-                # None,  # app.ueb_emit_x * 1e9,  # 0.9,
-                u'horizontalPosition': v.ebm_x,  # 0,
-                u'isReadOnly': False,
-                u'name': unicode(v.ebm_nm),  # u'NSLS-II Low Beta Day 1',
-                u'rmsSpread': _default_value('ueb_sig_e', v, std_options, 0.00089),
-                # None,  # app.ueb_sig_e,  # 0.00089,
-                u'verticalAlpha': _default_value('ueb_alpha_y', v, std_options, 0.0),  # None,  # app.ueb_alpha_y,  # 0,
-                u'verticalBeta': _default_value('ueb_beta_y', v, std_options, 1.06),
-                # None,  # app.ueb_beta_y,  # 1.06,
-                u'verticalDispersion': _default_value('ueb_eta_y', v, std_options, 0.0),
-                # None,  # app.ueb_eta_y,  # 0,
-                u'verticalDispersionDerivative': _default_value('ueb_eta_y_pr', v, std_options, 0.0),
-                # None,  # app.ueb_eta_y_pr,  # 0,
-                u'verticalEmittance': _default_value('ueb_emit_y', v, std_options, 8e-12) * 1e9,
-                # None,  # app.ueb_emit_y * 1e9,  # 0.008,
-                u'verticalPosition': v.ebm_y,  # 0
-            },
+            u'beamline': beamlines_list,
+            u'electronBeam': electronBeam,
             u'electronBeams': [],
             u'fluxReport': {
-                u'azimuthalPrecision': v.sm_pra,  # 1,
-                u'distanceFromSource': v.op_r,  # 20.5,
-                u'finalEnergy': v.sm_ef,  # 20000,
-                u'fluxType': v.sm_type,  # 1,
-                u'horizontalApertureSize': v.sm_rx * 1e3,  # u'1',
-                u'horizontalPosition': v.sm_x,  # 0,
-                u'initialEnergy': v.sm_ei,  # u'100',
-                u'longitudinalPrecision': v.sm_prl,  # 1,
-                u'photonEnergyPointCount': v.sm_ne,  # 10000,
-                u'polarization': v.sm_pol,  # 6,
-                u'verticalApertureSize': v.sm_ry * 1e3,  # u'1',
-                u'verticalPosition': v.sm_y,  # 0,
+                u'azimuthalPrecision': v.sm_pra,
+                u'distanceFromSource': v.op_r,
+                u'finalEnergy': v.sm_ef,
+                u'fluxType': v.sm_type,
+                u'horizontalApertureSize': v.sm_rx * 1e3,
+                u'horizontalPosition': v.sm_x,
+                u'initialEnergy': v.sm_ei,
+                u'longitudinalPrecision': v.sm_prl,
+                u'photonEnergyPointCount': v.sm_ne,
+                u'polarization': v.sm_pol,
+                u'verticalApertureSize': v.sm_ry * 1e3,
+                u'verticalPosition': v.sm_y,
             },
             u'initialIntensityReport': initialIntensityReport,
             u'intensityReport': {
-                u'distanceFromSource': v.op_r,  # 20.5,
-                u'finalEnergy': v.ss_ef,  # u'20000',
-                u'horizontalPosition': v.ss_x,  # u'0',
-                u'initialEnergy': v.ss_ei,  # u'100',
-                u'photonEnergyPointCount': v.ss_ne,  # 10000,
-                u'polarization': v.ss_pol,  # 6,
-                u'precision': v.ss_prec,  # 0.01,
-                u'verticalPosition': v.ss_y,  # 0,
+                u'distanceFromSource': v.op_r,
+                u'fieldUnits': 1,
+                u'finalEnergy': v.ss_ef,
+                u'horizontalPosition': v.ss_x,
+                u'initialEnergy': v.ss_ei,
+                u'photonEnergyPointCount': v.ss_ne,
+                u'polarization': v.ss_pol,
+                u'precision': v.ss_prec,
+                u'verticalPosition': v.ss_y,
             },
             u'multiElectronAnimation': {
                 u'horizontalPosition': 0,
-                u'horizontalRange': 0.4,
+                u'horizontalRange': v.w_rx * 1e3,
                 u'stokesParameter': '0',
                 u'verticalPosition': 0,
-                u'verticalRange': 0.6,
+                u'verticalRange': v.w_ry * 1e3,
             },
             u'multipole': {
                 u'distribution': 'n',
@@ -516,70 +601,55 @@ def parsed_dict(v, op):
                 u'length': 0,
                 u'order': 1,
             },
-            u'postPropagation': op.arProp[-1],  # [0, 0, u'1', 0, 0, u'0.3', u'2', u'0.5', u'1'],
+            u'postPropagation': op.arProp[-1],
             u'powerDensityReport': {
-                u'distanceFromSource': v.op_r,  # 20.5,
-                u'horizontalPointCount': v.pw_nx,  # 100,
-                u'horizontalPosition': v.pw_x,  # u'0',
-                u'horizontalRange': v.pw_rx * 1e3,  # u'15',
-                u'method': v.pw_meth,  # 1,
-                u'precision': v.pw_pr,  # u'1',
-                u'verticalPointCount': v.pw_ny,  # 100,
-                u'verticalPosition': v.pw_y,  # u'0',
-                u'verticalRange': v.pw_ry * 1e3,  # u'15',
+                u'distanceFromSource': v.op_r,
+                u'horizontalPointCount': v.pw_nx,
+                u'horizontalPosition': v.pw_x,
+                u'horizontalRange': v.pw_rx * 1e3,
+                u'method': v.pw_meth,
+                u'precision': v.pw_pr,
+                u'verticalPointCount': v.pw_ny,
+                u'verticalPosition': v.pw_y,
+                u'verticalRange': v.pw_ry * 1e3,
             },
             u'propagation': get_propagation(op),
             u'simulation': {
-                u'facility': unicode(v.ebm_nm.split()[0]),  # unicode(v.name.split()[0]),  # u'NSLS-II',
-                u'horizontalPointCount': v.w_nx,  # 100,
-                u'horizontalPosition': v.w_x,  # 0,
-                u'horizontalRange': v.w_rx * 1e3,  # u'0.4',
-                u'isExample': 0,  # u'1',
-                u'name': unicode(v.ebm_nm),  # unicode(v.name),  # u'NSLS-II CHX beamline',
-                u'photonEnergy': v.w_e,  # u'9000',
-                u'sampleFactor': v.w_smpf,  # 1,
-                u'samplingMethod': 1,  # 1 if v.w_smpf > 0 else 2,
-                u'simulationId': '',  # None,  # u'1YA8lSnj',
-                u'sourceType': u'u',
-                # unicode(_default_value('source_type', v, std_options)),  # app.source_type,  # u'u',
-                u'verticalPointCount': v.w_ny,  # 100
-                u'verticalPosition': v.w_y,  # 0,
-                u'verticalRange': v.w_ry * 1e3,  # u'0.6',
+                u'facility': 'Import',  # unicode(v.ebm_nm.split()[0]),
+                u'horizontalPointCount': v.w_nx,
+                u'horizontalPosition': v.w_x,
+                u'horizontalRange': v.w_rx * 1e3,
+                u'isExample': 0,
+                u'name': name,  # unicode(v.ebm_nm),  # unicode(v.name),
+                u'photonEnergy': v.w_e,
+                u'sampleFactor': v.w_smpf,
+                u'samplingMethod': 1,
+                u'simulationId': '',
+                u'sourceType': source_type,
+                u'verticalPointCount': v.w_ny,
+                u'verticalPosition': v.w_y,
+                u'verticalRange': v.w_ry * 1e3,
             },
-            u'sourceIntensityReport': get_json(static_json_url + '/srw-default.json')['models'][
-                'sourceIntensityReport'],
-            u'undulator': {
-                u'horizontalAmplitude': _default_value('und_bx', v, std_options, 0.0),  # v.und_bx,  # u'0',
-                u'horizontalInitialPhase': _default_value('und_phx', v, std_options, 0.0),  # v.und_phx,  # 0,
-                u'horizontalSymmetry': v.und_sx,  # 1,
-                u'length': v.und_len,  # u'3',
-                u'longitudinalPosition': v.und_zc,  # 0,
-                u'period': v.und_per * 1e3,  # u'20',
-                u'verticalAmplitude': _default_value('und_by', v, std_options, 0.88770981),
-                # v.und_by,  # u'0.88770981',
-                u'verticalInitialPhase': _default_value('und_phy', v, std_options, 0.0),  # v.und_phy,  # 0,
-                u'verticalSymmetry': v.und_sy,  # -1
+            u'sourceIntensityReport': {
+                u'characteristic': v.si_type,  # 0,
+                u'distanceFromSource': v.op_r,
+                u'fieldUnits': 2,
+                u'polarization': v.si_pol,
             },
-            watchpointReport_name: initialIntensityReport,
-            u'gaussianBeam': {
-                u'energyPerPulse': 0,
-                # _default_value('gbm_pen', v, std_options),  # app.gb_energy_per_pulse,  # u'0.001',
-                u'polarization': 1,  # _default_value('gbm_pol', v, std_options),  # app.gb_polarization,  # 1,
-                u'rmsPulseDuration': 0,  # _default_value('gbm_st', v, std_options),
-                # app.gb_rms_pulse_duration * 1e12,  # 0.1,
-                u'rmsSizeX': 0,  # _default_value('gbm_sx', v, std_options),  # app.gb_rms_size_x * 1e6,  # u'9.78723',
-                u'rmsSizeY': 0,  # _default_value('gbm_sy', v, std_options),  # app.gb_rms_size_y * 1e6,  # u'9.78723',
-                u'waistAngleX': 0,  # _default_value('gbm_xp', v, std_options),  # app.gb_waist_angle_x,  # 0,
-                u'waistAngleY': 0,  # _default_value('gbm_yp', v, std_options),  # app.gb_waist_angle_y,  # 0,
-                u'waistX': 0,  # _default_value('gbm_x', v, std_options),  # app.gb_waist_x,  # 0,
-                u'waistY': 0,  # _default_value('gbm_y', v, std_options),  # app.gb_waist_y,  # 0,
-                u'waistZ': 0,  # _default_value('gbm_z', v, std_options),  # app.gb_waist_z,  # 0,
-            },
+            # get_json(static_json_url + '/srw-default.json')['models']['sourceIntensityReport'],
+            u'undulator': undulator,
+            u'gaussianBeam': gaussianBeam,
         },
-        u'report': u'',  # u'powerDensityReport',
+        u'report': u'',
         u'simulationType': u'srw',
-        u'version': unicode(get_json(static_json_url + '/schema-common.json')['version']),  # u'20160120',
+        u'version': unicode(get_json(static_json_url + '/schema-common.json')['version']),
     }
+
+    # Format the key name to be consistent with Sirepo:
+    for i in range(len(beamlines_list)):
+        if beamlines_list[i]['type'] == 'watch':
+            idx = beamlines_list[i]['id']
+            python_dict['models'][u'watchpointReport{}'.format(idx)] = initialIntensityReport
 
     return python_dict
 
@@ -669,7 +739,8 @@ class SRWParser:
     def replace_files(self):
         for key in self.v.__dict__.keys():
             if key.find('_ifn') >= 0:
-                self.v.__dict__[key] = 'mirror_1d.dat'
+                if getattr(self.v, key) != '':
+                    self.v.__dict__[key] = 'mirror_1d.dat'
             if key.find('fdir') >= 0:
                 self.v.__dict__[key] = self.initial_lib_dir
         self.get_files()
@@ -699,7 +770,7 @@ class SRWParser:
         else:
             self.read_op()
 
-        self.json_content = parsed_dict(self.v, self.op)
+        self.json_content = parsed_dict(self.v, self.op, os.path.basename(self.infile))
 
     def save(self):
         with open(self.save_file, 'w') as f:
@@ -713,7 +784,7 @@ class SRWParser:
 
 
 def main(py_file, debug=False):
-    o = SRWParser(py_file, clean=False)
+    o = SRWParser(py_file, clean=False)  # , lib_dir='./')
     # Here we may process .dat files:
     # ...
     print 'List of .dat files:', o.list_of_files
@@ -722,12 +793,12 @@ def main(py_file, debug=False):
     # Main SRW calculation and conversion to JSON:
     o.to_json()
 
-    # Save the resulted file:
-    o.save()
-
     if debug:
         pprint.pprint(o.json_content)
         print '\n\tJSON output is saved in <%s>.' % o.save_file
+
+    # Save the resulted file:
+    o.save()
 
     return
 

@@ -1,6 +1,7 @@
 data_CHX/
-chx.py
+chx*.json
+chx*.py
+
 data_LCLS_SXR/
-lcls.json
-lcls.py
-lcls0.py
+lcls*.json
+lcls*.py
