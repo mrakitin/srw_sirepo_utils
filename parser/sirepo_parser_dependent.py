@@ -681,7 +681,10 @@ class SRWParser:
         self.clean = clean
 
         # Module name is used for __import__:
-        self.module_name = os.path.splitext(os.path.basename(self.infile))[0]
+        self.module_name, self.extension = os.path.splitext(os.path.basename(self.infile))
+        if self.extension != '.py':
+            self.clean_tmp_files()
+            raise Exception('File extension must be <.py>, found extension <{}>.'.format(self.extension))
 
         # Important objects from the parsed file:
         self.v = None  # object containing parameters from varParam list
@@ -718,9 +721,15 @@ class SRWParser:
         try:
             self.imported_srw_file = __import__(self.module_name, fromlist=[self.set_optics_func, self.varParam_parm])
         except:
+            # Remove temporary .py and .pyc files, we don't need them anymore:
+            self.clean_tmp_files()
             raise Exception('Module <{}> cannot be imported.'.format(self.module_name))
 
         # Remove temporary .py and .pyc files, we don't need them anymore:
+        self.clean_tmp_files()
+
+    def clean_tmp_files(self):
+        """Removes temporary .py and .pyc files."""
         if self.clean:
             for f in [self.infile, self.infile + 'c']:
                 try:
