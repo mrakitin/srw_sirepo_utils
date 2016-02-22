@@ -715,7 +715,11 @@ class SRWParser:
             dir_with_script = os.getcwd()
 
         sys.path.append(os.path.abspath(dir_with_script))
-        self.imported_srw_file = __import__(self.module_name, fromlist=[self.set_optics_func, self.varParam_parm])
+        try:
+            self.imported_srw_file = __import__(self.module_name, fromlist=[self.set_optics_func, self.varParam_parm])
+        except:
+            raise Exception('Module <{}> cannot be imported.'.format(self.module_name))
+
         # Remove temporary .py and .pyc files, we don't need them anymore:
         if self.clean:
             for f in [self.infile, self.infile + 'c']:
