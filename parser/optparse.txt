@@ -1,0 +1,485 @@
+Usage: chx.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  --und_mdir=UND_MDIR   name of magnetic measurements sub-folder
+  --und_g=UND_G         undulator gap [mm] (assumes availability of magnetic
+                        measurement or simulation data)
+  --und_b2e             estimate undulator fundamental photon energy (in [eV])
+                        for the amplitude of sinusoidal magnetic field defined
+                        by und_b or und_bx, und_by
+  --und_e2b             estimate undulator field amplitude (in [T]) for the
+                        photon energy defined by w_e
+  --tr                  calculate electron trajectory
+  --tr_cti=TR_CTI       initial time moment (c*t) for electron trajectory
+                        calculation [m]
+  --tr_ctf=TR_CTF       final time moment (c*t) for electron trajectory
+                        calculation [m]
+  --tr_np=TR_NP         number of points for trajectory calculation
+  --tr_mag=TR_MAG       magnetic field to be used for trajectory calculation:
+                        1- approximate, 2- accurate
+  --tr_fn=TR_FN         file name for saving calculated trajectory data
+  --tr_pl=TR_PL         plot the resulting trajectiry in graph(s): ""- dont
+                        plot, otherwise the string should list the trajectory
+                        components to plot
+  --ss                  calculate single-e spectrum vs photon energy
+  --ss_ei=SS_EI         initial photon energy [eV] for single-e spectrum vs
+                        photon energy calculation
+  --ss_ef=SS_EF         final photon energy [eV] for single-e spectrum vs
+                        photon energy calculation
+  --ss_ne=SS_NE         number of points vs photon energy for single-e
+                        spectrum vs photon energy calculation
+  --ss_x=SS_X           horizontal position [m] for single-e spectrum vs
+                        photon energy calculation
+  --ss_y=SS_Y           vertical position [m] for single-e spectrum vs photon
+                        energy calculation
+  --ss_meth=SS_METH     method to use for single-e spectrum vs photon energy
+                        calculation: 0- "manual", 1- "auto-undulator", 2-
+                        "auto-wiggler"
+  --ss_prec=SS_PREC     relative precision for single-e spectrum vs photon
+                        energy calculation (nominal value is 0.01)
+  --ss_pol=SS_POL       polarization component to extract after spectrum vs
+                        photon energy calculation: 0- Linear Horizontal, 1-
+                        Linear Vertical, 2- Linear 45 degrees, 3- Linear 135
+                        degrees, 4- Circular Right, 5- Circular Left, 6- Total
+  --ss_mag=SS_MAG       magnetic field to be used for single-e spectrum vs
+                        photon energy calculation: 1- approximate, 2- accurate
+  --ss_ft=SS_FT         presentation/domain: "f"- frequency (photon energy),
+                        "t"- time
+  --ss_u=SS_U           electric field units: 0- arbitrary, 1-
+                        sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or
+                        sqrt(W/mm^2), depending on representation (freq. or
+                        time)
+  --ss_fn=SS_FN         file name for saving calculated single-e spectrum vs
+                        photon energy
+  --ss_pl=SS_PL         plot the resulting single-e spectrum in a graph: ""-
+                        dont plot, "e"- show plot vs photon energy
+  --gs                  calculate Gaussian beam spectrum vs photon energy or
+                        time (has priority over "ss" if both Gaussian beam and
+                        e-beam + magnetic field are defined)
+  --sm                  calculate multi-e spectrum vs photon energy
+  --sm_ei=SM_EI         initial photon energy [eV] for multi-e spectrum vs
+                        photon energy calculation
+  --sm_ef=SM_EF         final photon energy [eV] for multi-e spectrum vs
+                        photon energy calculation
+  --sm_ne=SM_NE         number of points vs photon energy for multi-e spectrum
+                        vs photon energy calculation
+  --sm_x=SM_X           horizontal center position [m] for multi-e spectrum vs
+                        photon energy calculation
+  --sm_rx=SM_RX         range of horizontal position / horizontal aperture
+                        size [m] for multi-e spectrum vs photon energy
+                        calculation
+  --sm_nx=SM_NX         number of points vs horizontal position for multi-e
+                        spectrum vs photon energy calculation
+  --sm_y=SM_Y           vertical center position [m] for multi-e spectrum vs
+                        photon energy calculation
+  --sm_ry=SM_RY         range of vertical position / vertical aperture size
+                        [m] for multi-e spectrum vs photon energy calculation
+  --sm_ny=SM_NY         number of points vs vertical position for multi-e
+                        spectrum vs photon energy calculation
+  --sm_mag=SM_MAG       magnetic field to be used for calculation of multi-e
+                        spectrum spectrum or intensity distribution: 1-
+                        approximate, 2- accurate
+  --sm_hi=SM_HI         initial UR spectral harmonic to be taken into
+                        accountfor multi-e spectrum vs photon energy
+                        calculation
+  --sm_hf=SM_HF         final UR spectral harmonic to be taken into accountfor
+                        multi-e spectrum vs photon energy calculation
+  --sm_prl=SM_PRL       longitudinal integration precision parameter for
+                        multi-e spectrum vs photon energy calculation
+  --sm_pra=SM_PRA       azimuthal integration precision parameter for multi-e
+                        spectrum vs photon energy calculation
+  --sm_meth=SM_METH     method to use for spectrum vs photon energy
+                        calculation in case of arbitrary input magnetic field:
+                        0- "manual", 1- "auto-undulator", 2- "auto-wiggler",
+                        -1- dont use this accurate integration method (rather
+                        use approximate if possible)
+  --sm_prec=SM_PREC     relative precision for spectrum vs photon energy
+                        calculation in case of arbitrary input magnetic field
+                        (nominal value is 0.01)
+  --sm_nm=SM_NM         number of macro-electrons for calculation of spectrum
+                        in case of arbitrary input magnetic field
+  --sm_na=SM_NA         number of macro-electrons to average on each node at
+                        parallel (MPI-based) calculation of spectrum in case
+                        of arbitrary input magnetic field
+  --sm_ns=SM_NS         saving periodicity (in terms of macro-electrons) for
+                        intermediate intensity at calculation of multi-
+                        electron spectrum in case of arbitrary input magnetic
+                        field
+  --sm_type=SM_TYPE     calculate flux (=1) or flux per unit surface (=2)
+  --sm_pol=SM_POL       polarization component to extract after calculation of
+                        multi-e flux or intensity: 0- Linear Horizontal, 1-
+                        Linear Vertical, 2- Linear 45 degrees, 3- Linear 135
+                        degrees, 4- Circular Right, 5- Circular Left, 6- Total
+  --sm_rm=SM_RM         method for generation of pseudo-random numbers for
+                        e-beam phase-space integration: 1- standard pseudo-
+                        random number generator, 2- Halton sequences, 3- LPtau
+                        sequences (to be implemented)
+  --sm_fn=SM_FN         file name for saving calculated milti-e spectrum vs
+                        photon energy
+  --sm_pl=SM_PL         plot the resulting spectrum-e spectrum in a graph: ""-
+                        dont plot, "e"- show plot vs photon energy
+  --pw                  calculate SR power density distribution
+  --pw_x=PW_X           central horizontal position [m] for calculation of
+                        power density distribution vs horizontal and vertical
+                        position
+  --pw_rx=PW_RX         range of horizontal position [m] for calculation of
+                        power density distribution vs horizontal and vertical
+                        position
+  --pw_nx=PW_NX         number of points vs horizontal position for
+                        calculation of power density distribution
+  --pw_y=PW_Y           central vertical position [m] for calculation of power
+                        density distribution vs horizontal and vertical
+                        position
+  --pw_ry=PW_RY         range of vertical position [m] for calculation of
+                        power density distribution vs horizontal and vertical
+                        position
+  --pw_ny=PW_NY         number of points vs vertical position for calculation
+                        of power density distribution
+  --pw_pr=PW_PR         precision factor for calculation of power density
+                        distribution
+  --pw_meth=PW_METH     power density computation method (1- "near field", 2-
+                        "far field")
+  --pw_zi=PW_ZI         initial longitudinal position along electron
+                        trajectory of power density distribution (effective if
+                        pow_sst < pow_sfi)
+  --pw_zf=PW_ZF         final longitudinal position along electron trajectory
+                        of power density distribution (effective if pow_sst <
+                        pow_sfi)
+  --pw_mag=PW_MAG       magnetic field to be used for power density
+                        calculation: 1- approximate, 2- accurate
+  --pw_fn=PW_FN         file name for saving calculated power density
+                        distribution
+  --pw_pl=PW_PL         plot the resulting power density distribution in a
+                        graph: ""- dont plot, "x"- vs horizontal position,
+                        "y"- vs vertical position, "xy"- vs horizontal and
+                        vertical position
+  --si                  calculate single-e intensity distribution (without
+                        wavefront propagation through a beamline) vs
+                        horizontal and vertical position
+  --gi                  calculate coherent Gaussian beam intensity
+                        distribution (without wavefront propagation through a
+                        beamline) vs horizontal and vertical position (has
+                        priority over "si" if both Gaussian beam and e-beam +
+                        magnetic field are defined)
+  --ws                  calculate single-electron (/ fully coherent) wavefront
+                        propagation
+  --wg                  calculate coherent Gaussian beam wavefront propagation
+                        (has priority over "si" if both Gaussian beam and
+                        e-beam + magnetic field are defined)
+  --wm                  calculate multi-electron (/ partially coherent)
+                        wavefront propagation
+  --w_e=W_E             photon energy [eV] for calculation of intensity
+                        distribution vs horizontal and vertical position
+  --w_ef=W_EF           final photon energy [eV] for calculation of intensity
+                        distribution vs horizontal and vertical position
+  --w_ne=W_NE           number of points vs photon energy for calculation of
+                        intensity distribution
+  --w_x=W_X             central horizontal position [m] for calculation of
+                        intensity distribution
+  --w_rx=W_RX           range of horizontal position [m] for calculation of
+                        intensity distribution
+  --w_nx=W_NX           number of points vs horizontal position for
+                        calculation of intensity distribution
+  --w_y=W_Y             central vertical position [m] for calculation of
+                        intensity distribution vs horizontal and vertical
+                        position
+  --w_ry=W_RY           range of vertical position [m] for calculation of
+                        intensity distribution vs horizontal and vertical
+                        position
+  --w_ny=W_NY           number of points vs vertical position for calculation
+                        of intensity distribution
+  --w_smpf=W_SMPF       sampling factor for calculation of intensity
+                        distribution vs horizontal and vertical position
+  --w_meth=W_METH       method to use for calculation of intensity
+                        distribution vs horizontal and vertical position
+  --w_prec=W_PREC       relative precision for calculation of intensity
+                        distribution vs horizontal and vertical position
+  --w_mag=W_MAG         magnetic field to be used for calculation of intensity
+                        distribution vs horizontal and vertical position: 1-
+                        approximate, 2- accurate
+  --w_ft=W_FT           presentation/domain: "f"- frequency (photon energy),
+                        "t"- time
+  --w_u=W_U             electric field units: 0- arbitrary, 1-
+                        sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or
+                        sqrt(W/mm^2), depending on representation (freq. or
+                        time)
+  --si_pol=SI_POL       polarization component to extract after calculation of
+                        intensity distribution: 0- Linear Horizontal, 1-
+                        Linear Vertical, 2- Linear 45 degrees, 3- Linear 135
+                        degrees, 4- Circular Right, 5- Circular Left, 6- Total
+  --si_type=SI_TYPE     type of a characteristic to be extracted after
+                        calculation of intensity distribution: 0- Single-
+                        Electron Intensity, 1- Multi-Electron Intensity, 2-
+                        Single-Electron Flux, 3- Multi-Electron Flux, 4-
+                        Single-Electron Radiation Phase, 5- Re(E): Real part
+                        of Single-Electron Electric Field, 6- Im(E): Imaginary
+                        part of Single-Electron Electric Field, 7- Single-
+                        Electron Intensity, integrated over Time or Photon
+                        Energy
+  --si_fn=SI_FN         file name for saving calculated single-e intensity
+                        distribution (without wavefront propagation through a
+                        beamline) vs horizontal and vertical position
+  --ws_fni=WS_FNI       file name for saving propagated single-e intensity
+                        distribution vs horizontal and vertical position
+  --ws_pl=WS_PL         plot the propagated radiaiton intensity distributions
+                        in graph(s): ""- dont plot, "x"- vs horizontal
+                        position, "y"- vs vertical position, "xy"- vs
+                        horizontal and vertical position
+  --ws_ap=WS_AP         switch specifying representation of the resulting
+                        Stokes parameters (/ Intensity distribution):
+                        coordinate (0) or angular (1)
+  --si_pl=SI_PL         plot the input intensity distributions in graph(s):
+                        ""- dont plot, "x"- vs horizontal position, "y"- vs
+                        vertical position, "xy"- vs horizontal and vertical
+                        position
+  --wm_nm=WM_NM         number of macro-electrons (coherent wavefronts) for
+                        calculation of multi-electron wavefront propagation
+  --wm_na=WM_NA         number of macro-electrons (coherent wavefronts) to
+                        average on each node at parallel (MPI-based)
+                        calculation of multi-electron wavefront propagation
+  --wm_ns=WM_NS         saving periodicity (in terms of macro-electrons /
+                        coherent wavefronts) for intermediate intensity at
+                        multi-electron wavefront propagation calculation
+  --wm_ch=WM_CH         type of a characteristic to be extracted after
+                        calculation of multi-electron wavefront propagation:
+                        #0- intensity (s0); 1- four Stokes components; 2-
+                        mutual intensity cut vs x; 3- mutual intensity cut vs
+                        y
+  --wm_ap=WM_AP         switch specifying representation of the resulting
+                        Stokes parameters: coordinate (0) or angular (1)
+  --wm_x0=WM_X0         horizontal center position for mutual intensity cut
+                        calculation
+  --wm_y0=WM_Y0         vertical center position for mutual intensity cut
+                        calculation
+  --wm_ei=WM_EI         integration over photon energy is required (1) or not
+                        (0); if the integration is required, the limits are
+                        taken from w_e, w_ef
+  --wm_rm=WM_RM         method for generation of pseudo-random numbers for
+                        e-beam phase-space integration: 1- standard pseudo-
+                        random number generator, 2- Halton sequences, 3- LPtau
+                        sequences (to be implemented)
+  --wm_fni=WM_FNI       file name for saving propagated multi-e intensity
+                        distribution vs horizontal and vertical position
+  --fdir=FDIR           folder (directory) name for reading-in input and
+                        saving output data files
+  --ebm_nm=EBM_NM       standard electron beam name
+  --ebm_nms=EBM_NMS     standard electron beam name suffix: e.g. can be Day1,
+                        Final
+  --ebm_i=EBM_I         electron beam current [A]
+  --ebm_de=EBM_DE       electron beam average energy deviation [GeV]
+  --ebm_x=EBM_X         electron beam initial average horizontal position [m]
+  --ebm_y=EBM_Y         electron beam initial average vertical position [m]
+  --ebm_xp=EBM_XP       electron beam initial average horizontal angle [rad]
+  --ebm_yp=EBM_YP       electron beam initial average vertical angle [rad]
+  --ebm_z=EBM_Z         electron beam initial average longitudinal position
+                        [m]
+  --ebm_dr=EBM_DR       electron beam longitudinal drift [m] to be performed
+                        before a required calculation
+  --ebm_ens=EBM_ENS     electron beam relative energy spread
+  --ebm_emx=EBM_EMX     electron beam horizontal emittance [m]
+  --ebm_emy=EBM_EMY     electron beam vertical emittance [m]
+  --und_per=UND_PER     undulator period [m]
+  --und_len=UND_LEN     undulator length [m]
+  --und_b=UND_B         undulator vertical peak magnetic field [T]
+  --und_sx=UND_SX       undulator horizontal magnetic field symmetry vs
+                        longitudinal position
+  --und_sy=UND_SY       undulator vertical magnetic field symmetry vs
+                        longitudinal position
+  --und_zc=UND_ZC       undulator center longitudinal position [m]
+  --und_mfs=UND_MFS     name of magnetic measurements for different gaps
+                        summary file
+  --op_r=OP_R           longitudinal position of the first optical element [m]
+  --op_fin=OP_FIN       name of the final optical element wavefront has to be
+                        propagated through
+  --op_BL=OP_BL         beamline version/option number
+  --op_S0_dx=OP_S0_DX   slit S0: horizontal size [m]
+  --op_S0_dy=OP_S0_DY   slit S0: vertical size [m]
+  --op_S0_x=OP_S0_X     slit S0: horizontal center position [m]
+  --op_S0_y=OP_S0_Y     slit S0: vertical center position [m]
+  --op_HDM_ifn=OP_HDM_IFN
+                        mirror HDM: input file name of height profile data
+  --op_HDM_amp=OP_HDM_AMP
+                        mirror HDM: amplification coefficient for height
+                        profile data
+  --op_HDM_ofn=OP_HDM_OFN
+                        mirror HDM: output file name of optical path
+                        difference data
+  --op_HDM_x=OP_HDM_X   mirror HDM surface error: horizontal center position
+                        [m]
+  --op_HDM_y=OP_HDM_Y   mirror HDM surface error: vertical center position [m]
+  --op_S1_dz=OP_S1_DZ   S1: offset of longitudinal position [m]
+  --op_S1_dx=OP_S1_DX   slit S1: horizontal size [m]
+  --op_S1_dy=OP_S1_DY   slit S1: vertical size [m]
+  --op_S1_x=OP_S1_X     slit S1: horizontal center position [m]
+  --op_S1_y=OP_S1_Y     slit S1: vertical center position [m]
+  --op_DCM_e=OP_DCM_E   DCM: central photon energy DCM is tuned to [eV]
+  --op_DCM_ac1=OP_DCM_AC1
+                        DCM: angular deviation of 1st crystal from exact Bragg
+                        angle [rad]
+  --op_DCM_ac2=OP_DCM_AC2
+                        DCM: angular deviation of 2nd crystal from exact Bragg
+                        angle [rad]
+  --op_DCME_ifn=OP_DCME_IFN
+                        DCM surface error: input file name of height profile
+                        data
+  --op_DCME_amp=OP_DCME_AMP
+                        DCM surface error: amplification coefficient
+  --op_DCME_ofn=OP_DCME_OFN
+                        DCM surface error: output file name of optical path
+                        difference data
+  --op_DCME_x=OP_DCME_X
+                        DCM surface error: horizontal center position [m]
+  --op_DCME_y=OP_DCME_Y
+                        DCM surface error: vertical center position [m]
+  --op_FIB_fpl=OP_FIB_FPL
+                        FIB: focusing plane ("h" or "v" or "hv" or "")
+  --op_FIB_delta_e=OP_FIB_DELTA_E
+                        Fiber: refractive index decrement of main (exterior)
+                        material
+  --op_FIB_delta_c=OP_FIB_DELTA_C
+                        Fiber: refractive index decrement of core material
+  --op_FIB_atnl_e=OP_FIB_ATNL_E
+                        Fiber: attenuation length of main (exterior) material
+                        [m]
+  --op_FIB_atnl_c=OP_FIB_ATNL_C
+                        Fiber: attenuation length of core material [m]
+  --op_FIB_d_e=OP_FIB_D_E
+                        Fiber: ext. diameter [m]
+  --op_FIB_d_c=OP_FIB_D_C
+                        Fiber: core diameter [m]
+  --op_FIB_x=OP_FIB_X   Fiber: horizontal center position [m]
+  --op_FIB_y=OP_FIB_Y   Fiber: vertical center position [m]
+  --op_S2_dz=OP_S2_DZ   S2: offset of longitudinal position [m]
+  --op_S2_dx=OP_S2_DX   slit S2: horizontal size [m]
+  --op_S2_dy=OP_S2_DY   slit S2: vertical size [m]
+  --op_S2_x=OP_S2_X     slit S2: horizontal center position [m]
+  --op_S2_y=OP_S2_Y     slit S2: vertical center position [m]
+  --op_BPM_dz=OP_BPM_DZ
+                        BPM: offset of longitudinal position [m]
+  --op_CRL_dz=OP_CRL_DZ
+                        CRL: offset of longitudinal position [m]
+  --op_CRL1_fpl=OP_CRL1_FPL
+                        CRL1: focusing plane ("h" or "v" or "hv" or "")
+  --op_CRL1_delta=OP_CRL1_DELTA
+                        CRL1: refractive index decrements of material
+  --op_CRL1_atnl=OP_CRL1_ATNL
+                        CRL1: attenuation length of material [m]
+  --op_CRL1_apnf=OP_CRL1_APNF
+                        CRL1: geometrical aparture of 1D CRL in the plane
+                        where there is no focusing
+  --op_CRL1_apf=OP_CRL1_APF
+                        CRL1: geometrical aparture of 1D CRL in the focusing
+                        plane
+  --op_CRL1_rmin=OP_CRL1_RMIN
+                        CRL1: radius of curface curvature at the tip of
+                        parabola [m]
+  --op_CRL1_n=OP_CRL1_N
+                        CRL1: number of individual lenses
+  --op_CRL1_thck=OP_CRL1_THCK
+                        CRL1: wall thickness (at the tip of parabola) [m]
+  --op_CRL1_x=OP_CRL1_X
+                        CRL1: horizontal center position [m]
+  --op_CRL1_y=OP_CRL1_Y
+                        CRL1: vertical center position [m]
+  --op_CRL2_fpl=OP_CRL2_FPL
+                        CRL2: focusing plane ("h" or "v" or "hv" or "")
+  --op_CRL2_delta=OP_CRL2_DELTA
+                        CRL2: refractive index decrements of material
+  --op_CRL2_atnl=OP_CRL2_ATNL
+                        CRL2: attenuation length of material [m]
+  --op_CRL2_apnf=OP_CRL2_APNF
+                        CRL2: geometrical aparture of 1D CRL in the plane
+                        where there is no focusing
+  --op_CRL2_apf=OP_CRL2_APF
+                        CRL2: geometrical aparture of 1D CRL in the focusing
+                        plane
+  --op_CRL2_rmin=OP_CRL2_RMIN
+                        CRL2: radius of curface curvature at the tip of
+                        parabola [m]
+  --op_CRL2_n=OP_CRL2_N
+                        CRL2: number of individual lenses
+  --op_CRL2_thck=OP_CRL2_THCK
+                        CRL2: wall thickness (at the tip of parabola) [m]
+  --op_CRL2_x=OP_CRL2_X
+                        CRL2: horizontal center position [m]
+  --op_CRL2_y=OP_CRL2_Y
+                        CRL2: vertical center position [m]
+  --op_KLA_dx=OP_KLA_DX
+                        KL aperture: horizontal size [m]
+  --op_KLA_dy=OP_KLA_DY
+                        KL aperture: vertical size [m]
+  --op_KL_dz=OP_KL_DZ   KL: offset of longitudinal position [m]
+  --op_KL_fx=OP_KL_FX   KL: horizontal focal length [m]
+  --op_KL_fy=OP_KL_FY   KL: vertical focal length [m]
+  --op_KL_x=OP_KL_X     KL: horizontal center position [m]
+  --op_KL_y=OP_KL_Y     KL: vertical center position [m]
+  --op_S3_dz=OP_S3_DZ   S3: offset of longitudinal position [m]
+  --op_S3_dx=OP_S3_DX   slit S3: horizontal size [m]
+  --op_S3_dy=OP_S3_DY   slit S3: vertical size [m]
+  --op_S3_x=OP_S3_X     slit S3: horizontal center position [m]
+  --op_S3_y=OP_S3_Y     slit S3: vertical center position [m]
+  --op_SMP_dz=OP_SMP_DZ
+                        sample: offset of longitudinal position [m]
+  --op_SMP_ifn=OP_SMP_IFN
+                        sample: model file name (binary "dumped" SRW
+                        transmission object)
+  --op_SMP_ofn=OP_SMP_OFN
+                        sample: output file name of optical path difference
+                        data
+  --op_SMP_x=OP_SMP_X   sample: horizontal center position [m]
+  --op_SMP_y=OP_SMP_Y   sample: vertical center position [m]
+  --op_D_dz=OP_D_DZ     detector: offset of longitudinal position [m]
+  --op_S0_pp=OP_S0_PP   slit S0: propagation parameters
+  --op_S0_HDM_pp=OP_S0_HDM_PP
+                        drift S0 -> HDM: propagation parameters
+  --op_S0_S1_pp=OP_S0_S1_PP
+                        drift S0 -> S1: propagation parameters
+  --op_HDM_pp=OP_HDM_PP
+                        mirror HDM: propagation parameters
+  --op_HDM_S1_pp=OP_HDM_S1_PP
+                        drift HDM -> S1: propagation parameters
+  --op_S1_pp=OP_S1_PP   slit S1: propagation parameters
+  --op_S1_DCM_pp=OP_S1_DCM_PP
+                        drift S1 -> DCM: propagation parameters
+  --op_DCMC1_pp=OP_DCMC1_PP
+                        DCM Crystal #1: propagation parameters
+  --op_DCMC2_pp=OP_DCMC2_PP
+                        DCM Crystal #2: propagation parameters
+  --op_DCME_pp=OP_DCME_PP
+                        DCM Crystal #1&2: surface height error
+  --op_FIB_pp=OP_FIB_PP
+                        fiber: propagation parameters
+  --op_DCM_S2_pp=OP_DCM_S2_PP
+                        drift DCM -> S2: propagation parameters
+  --op_S1_S2_pp=OP_S1_S2_PP
+                        drift S1 -> S2: propagation parameters
+  --op_S2_pp=OP_S2_PP   slit S2: propagation parameters
+  --op_S2_BPM_pp=OP_S2_BPM_PP
+                        drift S2 -> BPM: propagation parameters
+  --op_S2_CRL_pp=OP_S2_CRL_PP
+                        drift S2 -> BPM: propagation parameters
+  --op_BPM_CRL_pp=OP_BPM_CRL_PP
+                        drift BPM -> CRL: propagation parameters
+  --op_CRL1_pp=OP_CRL1_PP
+                        CRL1: propagation parameters
+  --op_CRL2_pp=OP_CRL2_PP
+                        CRL2: propagation parameters
+  --op_CRL_KL_pp=OP_CRL_KL_PP
+                        drift CRL -> KL: propagation parameters
+  --op_CRL_SMP_pp=OP_CRL_SMP_PP
+                        drift CRL -> sample: propagation parameters
+  --op_KLA_pp=OP_KLA_PP
+                        KL aperture: propagation parameters
+  --op_KL_pp=OP_KL_PP   KL: propagation parameters
+  --op_KL_S3_pp=OP_KL_S3_PP
+                        drift KL -> S3: propagation parameters
+  --op_S3_pp=OP_S3_PP   slit S3: propagation parameters
+  --op_S3_SMP_pp=OP_S3_SMP_PP
+                        drift S3 -> sample: propagation parameters
+  --op_SMP_pp=OP_SMP_PP
+                        sample: propagation parameters
+  --op_SMP_D_pp=OP_SMP_D_PP
+                        sample -> detector: propagation parameters
+  --op_fin_pp=OP_FIN_PP
+                        final post-propagation (resize) parameters

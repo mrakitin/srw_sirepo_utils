@@ -11,6 +11,7 @@ from __future__ import print_function #Python 2.7 compatibility
 from srwlib import *
 from uti_plot import *
 import uti_math
+import argparse
 import optparse
 import time
 
@@ -1423,8 +1424,11 @@ def srwl_uti_parse_options(_descr):
         [3]: string containing help / explanation of the option / variable
         [4]: optional string describing formal action to be taken if option is fired
     """
-
-    p = optparse.OptionParser()
+    optparser = True  # False  # True
+    if optparser:
+        p = optparse.OptionParser()
+    else:
+        p = argparse.ArgumentParser()  # optparse.OptionParser()
     nOpt = len(_descr)
 
     listOptNamesPostParse = []
@@ -1432,10 +1436,16 @@ def srwl_uti_parse_options(_descr):
         curOpt = _descr[i]
         
         sTypeShort = curOpt[1]
-        sType = 'string'
-        if(sTypeShort == 'f'): sType = 'float'
-        elif(sTypeShort == 'i'): sType = 'int'        
-        #elif(sTypeShort == 's'): sType = 'string'
+        if optparser:
+            sType = 'string'
+            if(sTypeShort == 'f'): sType = 'float'
+            elif(sTypeShort == 'i'): sType = 'int'
+            #elif(sTypeShort == 's'): sType = 'string'
+        else:
+            sType = str  # 'string'
+            if(sTypeShort == 'f'): sType = float  # 'float'
+            elif(sTypeShort == 'i'): sType = int  # 'int'
+            #elif(sTypeShort == 's'): sType = 'string'
 
         sAct = 'store'
         if(len(curOpt) > 4): sAct = curOpt[4]
@@ -1446,15 +1456,29 @@ def srwl_uti_parse_options(_descr):
         if(isinstance(defVal, list) or isinstance(defVal, array)): optIsList = True
 
         if(optIsList):
-            sType = 'string'
+            if optparser:
+                sType = 'string'
+            else:
+                sType = str  # 'string'
             listOptNamesPostParse.append(curOpt[0])
 
+        if not optparser:
+            curOpt[3] = curOpt[3].replace('%', '%%')
         if(len(sTypeShort) <= 0):
-            p.add_option('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
+            if optparser:
+                p.add_option('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
+            else:
+                p.add_argument('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
         else:
-            p.add_option('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
+            if optparser:
+                p.add_option('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
+            else:
+                p.add_argument('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
 
-    v, args = p.parse_args()
+    if optparser:
+        v, args = p.parse_args()
+    else:
+        v = p.parse_args()
 
     #"post-parsing" list-type options
     for i in range(len(listOptNamesPostParse)):
