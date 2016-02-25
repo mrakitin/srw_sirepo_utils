@@ -11,8 +11,6 @@ from __future__ import print_function #Python 2.7 compatibility
 from srwlib import *
 from uti_plot import *
 import uti_math
-import argparse
-import optparse
 import time
 
 #****************************************************************************
@@ -1415,7 +1413,7 @@ def srwl_uti_ext_options(_arOpt):
     return srwl_uti_merge_options(srwl_uti_std_options(), _arOpt)
 
 #****************************************************************************
-def srwl_uti_parse_options(_descr):
+def _optparse(_descr):
     """Set and parse command-prompt options from a compact description provided in _descr
     :param _descr: list providing compact description of all options; every element of this list is supposed to contain:
         [0]: string containing option (/ variable) name
@@ -1424,11 +1422,63 @@ def srwl_uti_parse_options(_descr):
         [3]: string containing help / explanation of the option / variable
         [4]: optional string describing formal action to be taken if option is fired
     """
-    optparser = True  # False  # True
-    if optparser:
-        p = optparse.OptionParser()
-    else:
-        p = argparse.ArgumentParser()  # optparse.OptionParser()
+    import optparse
+
+    p = optparse.OptionParser()
+    nOpt = len(_descr)
+
+    listOptNamesPostParse = []
+    for i in range(nOpt):
+        curOpt = _descr[i]
+
+        sTypeShort = curOpt[1]
+        sType = 'string'
+        if(sTypeShort == 'f'): sType = 'float'
+        elif(sTypeShort == 'i'): sType = 'int'
+        #elif(sTypeShort == 's'): sType = 'string'
+
+        sAct = 'store'
+        if(len(curOpt) > 4): sAct = curOpt[4]
+
+        defVal = curOpt[2]
+
+        optIsList = False
+        if(isinstance(defVal, list) or isinstance(defVal, array)): optIsList = True
+
+        if(optIsList):
+            sType = 'string'
+            listOptNamesPostParse.append(curOpt[0])
+
+        if(len(sTypeShort) <= 0):
+            p.add_option('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
+        else:
+            p.add_option('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
+
+    v, args = p.parse_args()
+
+    #"post-parsing" list-type options
+    for i in range(len(listOptNamesPostParse)):
+        curOptName = listOptNamesPostParse[i]
+        valCurOpt = getattr(v, curOptName)
+
+        if((isinstance(valCurOpt, list) == False) and (isinstance(valCurOpt, array) == False)):
+            parsedVal = srwl_uti_parse_str2list(valCurOpt)
+            setattr(v, curOptName, parsedVal)
+
+    return v
+
+def _argparse(_descr):
+    """Set and parse command-prompt options from a compact description provided in _descr
+    :param _descr: list providing compact description of all options; every element of this list is supposed to contain:
+        [0]: string containing option (/ variable) name
+        [1]: string containing type of the option / variable ('f' - float, 'i' - integer, 's' - string)
+        [2]: default value
+        [3]: string containing help / explanation of the option / variable
+        [4]: optional string describing formal action to be taken if option is fired
+    """
+    import argparse
+
+    p = argparse.ArgumentParser()
     nOpt = len(_descr)
 
     listOptNamesPostParse = []
@@ -1436,16 +1486,11 @@ def srwl_uti_parse_options(_descr):
         curOpt = _descr[i]
         
         sTypeShort = curOpt[1]
-        if optparser:
-            sType = 'string'
-            if(sTypeShort == 'f'): sType = 'float'
-            elif(sTypeShort == 'i'): sType = 'int'
-            #elif(sTypeShort == 's'): sType = 'string'
-        else:
-            sType = str  # 'string'
-            if(sTypeShort == 'f'): sType = float  # 'float'
-            elif(sTypeShort == 'i'): sType = int  # 'int'
-            #elif(sTypeShort == 's'): sType = 'string'
+        sType = str
+        if sTypeShort == 'f':
+            sType = float
+        elif sTypeShort == 'i':
+            sType = int
 
         sAct = 'store'
         if(len(curOpt) > 4): sAct = curOpt[4]
@@ -1456,29 +1501,16 @@ def srwl_uti_parse_options(_descr):
         if(isinstance(defVal, list) or isinstance(defVal, array)): optIsList = True
 
         if(optIsList):
-            if optparser:
-                sType = 'string'
-            else:
-                sType = str  # 'string'
+            sType = str
             listOptNamesPostParse.append(curOpt[0])
 
-        if not optparser:
-            curOpt[3] = curOpt[3].replace('%', '%%')
+        curOpt[3] = curOpt[3].replace('%', '%%')  # screen special '%' symbol
         if(len(sTypeShort) <= 0):
-            if optparser:
-                p.add_option('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
-            else:
-                p.add_argument('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
+            p.add_argument('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
         else:
-            if optparser:
-                p.add_option('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
-            else:
-                p.add_argument('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
-
-    if optparser:
-        v, args = p.parse_args()
-    else:
-        v = p.parse_args()
+            p.add_argument('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
+    argv = sys.argv
+    v = p.parse_args([] if len(argv) > 0 and argv[0].find('sirepo') >= 0 else None)
 
     #"post-parsing" list-type options
     for i in range(len(listOptNamesPostParse)):
@@ -1490,3 +1522,5 @@ def srwl_uti_parse_options(_descr):
             setattr(v, curOptName, parsedVal)
     
     return v
+
+srwl_uti_parse_options = _optparse if os.getenv('SRWL_OPTPARSE') == '1' else _argparse
