@@ -1413,7 +1413,7 @@ def srwl_uti_ext_options(_arOpt):
     return srwl_uti_merge_options(srwl_uti_std_options(), _arOpt)
 
 #****************************************************************************
-def _optparse(_descr):
+def _optparse(_descr, use_sys_argv=True):
     """Set and parse command-prompt options from a compact description provided in _descr
     :param _descr: list providing compact description of all options; every element of this list is supposed to contain:
         [0]: string containing option (/ variable) name
@@ -1421,6 +1421,7 @@ def _optparse(_descr):
         [2]: default value
         [3]: string containing help / explanation of the option / variable
         [4]: optional string describing formal action to be taken if option is fired
+    :param use_sys_argv: a flag which manages use of sys.argv values in optparse.
     """
     import optparse
 
@@ -1454,7 +1455,7 @@ def _optparse(_descr):
         else:
             p.add_option('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
 
-    v, args = p.parse_args()
+    v, args = p.parse_args(None if use_sys_argv is True else [])
 
     #"post-parsing" list-type options
     for i in range(len(listOptNamesPostParse)):
@@ -1467,7 +1468,7 @@ def _optparse(_descr):
 
     return v
 
-def _argparse(_descr):
+def _argparse(_descr, use_sys_argv=True):
     """Set and parse command-prompt options from a compact description provided in _descr
     :param _descr: list providing compact description of all options; every element of this list is supposed to contain:
         [0]: string containing option (/ variable) name
@@ -1475,6 +1476,7 @@ def _argparse(_descr):
         [2]: default value
         [3]: string containing help / explanation of the option / variable
         [4]: optional string describing formal action to be taken if option is fired
+    :param use_sys_argv: a flag which manages use of sys.argv values in argparse.
     """
     import argparse
 
@@ -1509,8 +1511,8 @@ def _argparse(_descr):
             p.add_argument('--' + curOpt[0], default=defVal, help=curOpt[3], action=sAct)
         else:
             p.add_argument('--' + curOpt[0], type=sType, default=defVal, help=curOpt[3], action=sAct)
-    argv = sys.argv
-    v = p.parse_args([] if len(argv) > 0 and argv[0].find('sirepo') >= 0 else None)
+
+    v = p.parse_args(None if use_sys_argv is True else [])
 
     #"post-parsing" list-type options
     for i in range(len(listOptNamesPostParse)):
