@@ -1412,8 +1412,9 @@ def srwl_uti_ext_options(_arOpt):
     """
     return srwl_uti_merge_options(srwl_uti_std_options(), _arOpt)
 
+
 #****************************************************************************
-def _optparse(_descr, use_sys_argv=True):
+def _optparse(_descr, use_sys_argv=True):  # MR26022016
     """Set and parse command-prompt options from a compact description provided in _descr using optparse (deprecated since Python 2.7).
     :param _descr: list providing compact description of all options; every element of this list is supposed to contain:
         [0]: string containing option (/ variable) name
@@ -1471,7 +1472,7 @@ def _optparse(_descr, use_sys_argv=True):
     return v
 
 
-def _argparse(_descr, use_sys_argv=True):
+def _argparse(_descr, use_sys_argv=True):  # MR26022016
     """Set and parse command-prompt options from a compact description provided in _descr using argparse (recommended since Python 2.7).
     :param _descr: list providing compact description of all options; every element of this list is supposed to contain:
         [0]: string containing option (/ variable) name
@@ -1527,6 +1528,7 @@ def _argparse(_descr, use_sys_argv=True):
             setattr(v, curOptName, parsedVal)
 
     return v
+
 
 '''
 MR26022016: Here we can specify which parser to use for parsing the options. Argparse is used by default, but if
