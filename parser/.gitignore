@@ -5,3 +5,6 @@ chx*.py
 data_LCLS_SXR/
 lcls*.json
 lcls*.py
+
+data_SRX/
+srx*.py
