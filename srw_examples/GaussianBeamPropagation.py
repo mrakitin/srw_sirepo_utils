@@ -1,9 +1,6 @@
 from __future__ import print_function
 
-import math
 import pylab as py
-# TODO: get rid of scipy:
-from scipy.interpolate import UnivariateSpline
 from srwlib import *
 from uti_math import matr_prod
 
@@ -52,18 +49,38 @@ TotalLength = 6.0  # Total length after the lens
 NumSteps = int((TotalLength - InitialDist) / StepSize)  # Number of steps to sample RMS x/y after the lens
 
 
-# Computing complex q parameter
 def qParameter(PhotonEnergy, Waist, RadiusCurvature):
+    """Computing complex q parameter"""
     Lam = 1.24e-6 * PhotonEnergy
     qp = (1.0 + 0j) / complex(1 / RadiusCurvature, -Lam / 3.1415 / Waist ** 2)
     return qp, Lam
 
 
-# Computing FWHM
-def FWHM(X, Y):
+def FWHM_scipy(X, Y):
+    """Computing FWHM (Full width at half maximum)"""
+    from scipy.interpolate import UnivariateSpline
     spline = UnivariateSpline(X, Y, s=0)
     r1, r2 = spline.roots()  # find the roots
     return r2 - r1  # return the difference (full width)
+
+
+def FWHM(X, Y):
+    """The function searches x-values (roots) where y=0 based on linear interpolation, and calculates FWHM"""
+
+    def _isPositive(num):
+        return True if num > 0 else False
+
+    positive = _isPositive(Y[0])
+    list_of_roots = []
+    for i in range(len(Y)):
+        current_positive = _isPositive(Y[i])
+        if current_positive != positive:
+            list_of_roots.append(X[i - 1] + (X[i] - X[i - 1]) / (abs(Y[i]) + abs(Y[i - 1])) * abs(Y[i - 1]))
+            positive = not positive
+    if len(list_of_roots) == 2:
+        return list_of_roots[1] - list_of_roots[0]
+    else:
+        raise Exception('Number of roots is more than 2!')
 
 
 def AnalyticEst(PhotonEnergy, WaistPozition, Waist, Dist):
@@ -71,7 +88,7 @@ def AnalyticEst(PhotonEnergy, WaistPozition, Waist, Dist):
     zR = 3.1415 * Waist ** 2 / Lam
     wRMSan = []
     for l in range(len(Dist)):
-        wRMSan.append(1 * Waist * math.sqrt(1 + (Lam * (Dist[l] - WaistPozition) / 4 / 3.1415 / Waist ** 2) ** 2))
+        wRMSan.append(1 * Waist * sqrt(1 + (Lam * (Dist[l] - WaistPozition) / 4 / 3.1415 / Waist ** 2) ** 2))
     return wRMSan
 
 
@@ -167,10 +184,10 @@ Wthx = []
 Wthy = []
 for m in range(len(s)):
     Wx = (WRx[m][0][0] * qx0 + WRx[m][0][1]) / (WRx[m][1][0] * qx0 + WRx[m][1][1])  # MatrixMultiply(WR,qxP)
-    RMSbx = math.sqrt(1.0 / (-1.0 / Wx).imag / 3.1415 * Lam) * 2.35
+    RMSbx = sqrt(1.0 / (-1.0 / Wx).imag / 3.1415 * Lam) * 2.35
     Wthx.append(RMSbx)
     Wy = (WRy[m][0][0] * qy0 + WRy[m][0][1]) / (WRy[m][1][0] * qy0 + WRy[m][1][1])  # MatrixMultiply(WR,qxP)
-    RMSby = math.sqrt(1.0 / (-1.0 / Wy).imag / 3.1415 * Lam) * 2.35
+    RMSby = sqrt(1.0 / (-1.0 / Wy).imag / 3.1415 * Lam) * 2.35
     Wthy.append(RMSby)
 # print(s[m],(RMSbx-xRMS[m])/xRMS[m]*100, (RMSby-yRMS[m])/yRMS[m]*100)
 
@@ -182,7 +199,7 @@ py.plot(s, Wthy, '--bo', label="Y envelope via ABCD propagator")
 py.legend()
 py.xlabel('Distance along beam line, m')
 py.ylabel('Horizontal and Vertical RMS beam sizes, m')
-py.title('Gaussian beam envelopes through a drift after a lense')
+py.title('Gaussian beam envelopes through a drift after a lens')
 
 # uti_plot.uti_plot1d(arIx, [wfrP.mesh.xStart, wfrP.mesh.xFin*0, wfrP.mesh.nx],
 # ['Horizontal coordinate [mm]', 'Intensity [ph/s/.1%bw/mm^2]', 'Distribution'])
