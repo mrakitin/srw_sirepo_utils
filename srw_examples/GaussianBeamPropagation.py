@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import matplotlib._pylab_helpers
 import uti_plot
 from matplotlib import pyplot as plt
 from srwlib import *
@@ -136,6 +137,12 @@ if __name__ == '__main__':
     s = []
     WRx = []
     WRy = []
+    intensitiesToPlot = {  # dict to store intensities and distances to plot at the end
+        'intensity': [],
+        'distance': [],
+        'mesh_x': [],
+        'mesh_y': []
+    }
     print('z        xRMS         yRMS       mesh.nx  mesh.ny       xStart       yStart')
     for j in range(NumSteps):
         # Calculating Initial Wavefront and extracting Intensity:
@@ -143,15 +150,25 @@ if __name__ == '__main__':
         arI0 = array('f', [0] * wfr.mesh.nx * wfr.mesh.ny)  # "flat" array to take 2D intensity data
         srwl.CalcIntFromElecField(arI0, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0)  # extracts intensity
         wfrP = deepcopy(wfr)
-        InitialDist = InitialDist + StepSize
-        (opBL, LensMatrX, LensMatrY, DriftMatr) = Container(InitialDist, f_x, f_y)
-        srwl.PropagElecField(wfrP, opBL)  # Propagate E-field
 
         # Selecting radiation properties
         Polar = 6  # 0- Linear Horizontal /  1- Linear Vertical 2- Linear 45 degrees / 3- Linear 135 degrees / 4- Circular Right /  5- Circular /  6- Total
         Intens = 0  # 0=Single-e I/1=Multi-e I/2=Single-e F/3=Multi-e F/4=Single-e RadPhase/5=Re single-e Efield/6=Im single-e Efield
         DependArg = 3  # 0 - vs e, 1 - vs x, 2 - vs y, 3- vs x&y, 4-vs x&e, 5-vs y&e, 6-vs x&y&e
         plotNum = 1000
+
+        if InitialDist == 0.0:  # plot initial intensity at 0
+            intensitiesToPlot['intensity'].append(deepcopy(arI0))
+            intensitiesToPlot['distance'].append(InitialDist)
+            intensitiesToPlot['mesh_x'].append(
+                deepcopy([plotNum * wfrP.mesh.xStart, plotNum * wfrP.mesh.xFin, wfrP.mesh.nx]))
+            intensitiesToPlot['mesh_y'].append(
+                deepcopy([plotNum * wfrP.mesh.yStart, plotNum * wfrP.mesh.yFin, wfrP.mesh.ny]))
+
+        InitialDist = InitialDist + StepSize
+        (opBL, LensMatrX, LensMatrY, DriftMatr) = Container(InitialDist, f_x, f_y)
+        srwl.PropagElecField(wfrP, opBL)  # Propagate E-field
+
         plotMeshx = [plotNum * wfrP.mesh.xStart, plotNum * wfrP.mesh.xFin, wfrP.mesh.nx]
         plotMeshy = [plotNum * wfrP.mesh.yStart, plotNum * wfrP.mesh.yFin, wfrP.mesh.ny]
 
@@ -163,6 +180,13 @@ if __name__ == '__main__':
         srwl.CalcIntFromElecField(arIx, wfrP, 6, Intens, 1, wfrP.mesh.eStart, 0, 0)
         arIy = array('f', [0] * wfrP.mesh.ny)
         srwl.CalcIntFromElecField(arIy, wfrP, 6, Intens, 2, wfrP.mesh.eStart, 0, 0)
+
+        if abs(InitialDist - 3.0) < 1e-10 or abs(InitialDist - 3.9) < 1e-10:  # plot at these distances
+            intensitiesToPlot['intensity'].append(deepcopy(arII))
+            intensitiesToPlot['distance'].append(InitialDist)
+            intensitiesToPlot['mesh_x'].append(deepcopy(plotMeshx))
+            intensitiesToPlot['mesh_y'].append(deepcopy(plotMeshy))
+
         x = []
         y = []
         arIxmax = max(arIx)
@@ -199,20 +223,27 @@ if __name__ == '__main__':
         Wthy.append(RMSby)
 
     # 7. Plotting
-    plt.plot(s, xRMS, '-r.', label="X envelope via SRW")
-    plt.plot(s, Wthx, '--ro', label="X envelope via analytical propagator")
-    plt.plot(s, yRMS, '-b.', label="Y envelope via SRW")
-    plt.plot(s, Wthy, '--bo', label="Y envelope via analytical propagator")
-    plt.legend()
-    plt.xlabel('Distance along beam line, [m]')
-    plt.ylabel('Horizontal and Vertical RMS beam sizes, [m]')
-    plt.title('Gaussian beam envelopes through a drift after a lens')
-    plt.grid()
-    plt.show()
-    plt.clf()
+    for i in range(len(intensitiesToPlot['intensity'])):
+        uti_plot.uti_plot2d(intensitiesToPlot['intensity'][i], intensitiesToPlot['mesh_x'][i],
+                            intensitiesToPlot['mesh_y'][i],
+                            ['Horizontal Position [mm]', 'Vertical Position [mm]',
+                             'Intenisty at {} m, [a.u.]'.format(intensitiesToPlot['distance'][i])])
 
-    uti_plot.uti_plot2d(arII, plotMeshx, plotMeshy,
-                        ['Horizontal Position [mm]', 'Vertical Position [mm]', 'Intenisty, [a.u.]'])
-    uti_plot.uti_plot_show()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(s, xRMS, '-r.', label="X envelope via SRW")
+    ax.plot(s, Wthx, '--ro', label="X envelope via analytical propagator")
+    ax.plot(s, yRMS, '-b.', label="Y envelope via SRW")
+    ax.plot(s, Wthy, '--bo', label="Y envelope via analytical propagator")
+    ax.legend()
+    ax.set_xlabel('Distance along beam line, [m]')
+    ax.set_ylabel('Horizontal and Vertical RMS beam sizes, [m]')
+    ax.set_title('Gaussian beam envelopes through a drift after a lens')
+    ax.grid()
+    plt.draw()
+
+    # See http://stackoverflow.com/questions/3783217/get-the-list-of-figures-in-matplotlib:
+    figures = [manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
+    plt.show()
 
     print('Exit')
