@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import matplotlib._pylab_helpers
 import uti_plot
 from matplotlib import pyplot as plt
 from srwlib import *
@@ -242,8 +241,6 @@ if __name__ == '__main__':
     ax.grid()
     plt.draw()
 
-    # See http://stackoverflow.com/questions/3783217/get-the-list-of-figures-in-matplotlib:
-    figures = [manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
     plt.show()
 
     print('Exit')
