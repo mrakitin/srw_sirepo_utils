@@ -239,7 +239,6 @@ if __name__ == '__main__':
     ax.set_ylabel('Horizontal and Vertical RMS beam sizes, [m]')
     ax.set_title('Gaussian beam envelopes through a drift after a lens')
     ax.grid()
-    plt.draw()
 
     plt.show()
 
