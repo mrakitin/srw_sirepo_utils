@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+
+"""
+The example was created by Timur Shaftan (BNL) for RadTrack project (https://github.com/radiasoft/radtrack).
+Adapted by Maksim Rakitin (BNL).
+The purpose of the example is to demonstrate good agreement of the SRW simulation
+of propagation of a gaussian beam through a drift with an analytical estimation.
+"""
+
 from __future__ import print_function
 
 import uti_plot
