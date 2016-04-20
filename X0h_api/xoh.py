@@ -7,6 +7,8 @@ For details see http://x-server.gmca.aps.anl.gov/pub/Stepanov_CR_1991_08.pdf.
 
 import requests
 
+X0H_SERVER = 'http://x-server.gmca.aps.anl.gov/cgi/X0h_form.exe'
+
 
 def _parse_xr_xi(string):
     return float(string.split('=')[-1].strip())
@@ -24,7 +26,6 @@ def get_server_data(energy, material, h, k, l):
     :return content: split server's response.
     """
 
-    url = 'http://x-server.gmca.aps.anl.gov/cgi/X0h_form.exe'
     payload = {
         'xway': 2,
         'wave': energy,
@@ -36,7 +37,7 @@ def get_server_data(energy, material, h, k, l):
         'df1df2': -1,
         'modeout': 1,
     }
-    r = requests.get(url, params=payload)
+    r = requests.get(X0H_SERVER, params=payload)
     content = r.text
     content = content.split('\n')
 
@@ -70,24 +71,37 @@ def get_crystal_parameters(content, hr=None):
         elif content[i].find('xih') >= 0:
             xih_list.append(content[i])
 
-    d = _parse_xr_xi(d[0])
-    if hr:
-        d /= (sum(n ** 2 for n in hr)) ** 0.5
+    try:
+        d = _parse_xr_xi(d[0])
+        if hr:
+            d /= (sum(n ** 2 for n in hr)) ** 0.5
 
-    xr0 = _parse_xr_xi(xr0_list[0])
-    xi0 = _parse_xr_xi(xi0_list[0])
-    xrh = _parse_xr_xi(xrh_list[0])
-    xih = _parse_xr_xi(xih_list[0])
+        xr0 = _parse_xr_xi(xr0_list[0])
+        xi0 = _parse_xr_xi(xi0_list[0])
+        xrh = _parse_xr_xi(xrh_list[0])
+        xih = _parse_xr_xi(xih_list[0])
+    except:
+        d = None
+        xr0 = None
+        xi0 = None
+        xrh = None
+        xih = None
 
     return d, xr0, xi0, xrh, xih
 
 
+def execute_x0h_api(material, energy_eV, h, k, l):
+    energy_keV = energy_eV / 1000.0
+    content = get_server_data(energy_keV, material, h, k, l)
+    d, xr0, xi0, xrh, xih = get_crystal_parameters(content, [h, k, l])
+    return d, xr0, xi0, xrh, xih
+
+
 if __name__ == '__main__':
-    energy = 9  # keV
+    energy = 9000.0  # eV
     h = 1
     k = 1
     l = 1
     for material in ['Silicon', 'Germanium', 'Diamond']:
-        content = get_server_data(energy, material, h, k, l)
-        d, xr0, xi0, xrh, xih = get_crystal_parameters(content, [h, k, l])
+        d, xr0, xi0, xrh, xih = execute_x0h_api(material, energy, h, k, l)
         print('Material: {} (d={} A)\nxr0: {}  xi0: {}\nxrh: {}  xih: {}\n'.format(material, d, xr0, xi0, xrh, xih))
