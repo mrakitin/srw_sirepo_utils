@@ -12,7 +12,7 @@ def convert_json(infile='in.json', outfile=None):
                 fout,
                 sort_keys=True,
                 indent=4,
-                separators=(',', ': '),
+                separators=(',', ': ') + '\n',
             )
 
     return content, outfile
