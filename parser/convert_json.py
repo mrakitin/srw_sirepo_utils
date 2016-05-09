@@ -6,14 +6,15 @@ def convert_json(infile='in.json', outfile=None):
         outfile = infile
     with open(infile, 'r') as fin:
         content = fin.read()
+        data = json.dumps(
+            json.loads(content),
+            sort_keys=True,
+            indent=4,
+            separators=(',', ': '),
+        ) + '\n'
+
         with open(outfile, 'w') as fout:
-            json.dump(
-                json.loads(content),
-                fout,
-                sort_keys=True,
-                indent=4,
-                separators=(',', ': '),
-            ) + '\n'
+            fout.write(data)
 
     return content, outfile
 
