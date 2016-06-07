@@ -57,7 +57,7 @@ TRANSFOCATOR_CONFIG = [
 ]
 
 
-class CRL():
+class CRL:
     def __init__(self,
                  cart_ids,
                  dl_lens=2e-3,
