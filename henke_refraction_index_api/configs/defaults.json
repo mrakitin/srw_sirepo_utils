@@ -23,6 +23,12 @@
             "short_argument": "min",
             "type": "float"
         },
+        "e_step": {
+            "default": 10,
+            "help": "energy step size used for saving data to a file [eV]",
+            "short_argument": "s",
+            "type": "float"
+        },
         "energy": {
             "default": null,
             "help": "photon energy [eV]",

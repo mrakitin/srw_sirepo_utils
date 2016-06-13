@@ -5,6 +5,7 @@ Get Index of Refraction from http://henke.lbl.gov/optical_constants/getdb2.html.
 Author: Maksim Rakitin (BNL)
 2016
 """
+import os
 
 import requests
 
@@ -31,6 +32,10 @@ class Delta:
         self.closest_energy = None
         self.content = None
 
+        if self.outfile:
+            self.save_to_file()
+            return
+
         if not self.data_file:
             self._get_file_name()
             self._get_file_content()
@@ -41,6 +46,40 @@ class Delta:
 
     def print_info(self):
         print('Found delta={} for the closest energy={} eV.'.format(self.delta, self.closest_energy))
+
+    def save_to_file(self):
+        def_e_min = self.parameters['e_min']['type'](self.parameters['e_min']['default'])
+        def_e_max = self.parameters['e_max']['type'](self.parameters['e_max']['default'])
+
+        self.e_min = def_e_min
+        self.e_max = def_e_min  # def_e_min + n_points * step
+        counter = 0
+        try:
+            os.remove(self.outfile)
+        except:
+            pass
+        while self.e_max < def_e_max:
+            self.e_max += self.n_points * self.e_step
+            if self.e_max > def_e_max:
+                self.e_max = def_e_max
+
+            self._get_file_name()
+            self._get_file_content()
+
+            if counter > 0:
+                # Get rid of headers (2 first rows) and the first data row to avoid data overlap:
+                content = self.content.split('\n')
+                self.content = '\n'.join(content[3:])
+
+            with open(self.outfile, 'a') as f:
+                f.write(self.content)
+
+            counter += 1
+            self.e_min = self.e_max
+
+        print('Data from {} eV to {} eV saved to the <{}> file.'.format(def_e_min, def_e_max, self.outfile))
+        print('Energy step: {} eV, number of points: {}, number of chunks {}.'.format(
+            self.e_step, self.n_points, counter))
 
     def _find_delta(self):
         skiprows = 2
