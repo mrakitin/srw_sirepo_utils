@@ -60,7 +60,7 @@ def convert_types(input_dict):
     return input_dict
 
 
-def defaults_file():
+def defaults_file(defaults_file_path=None, suffix=None):
     script_path = os.path.dirname(os.path.realpath(__file__))
 
     # Fix for Jython:
@@ -70,10 +70,19 @@ def defaults_file():
     except:
         pass
 
+    dat_dir = os.path.join(script_path, 'dat')
     config_dir = os.path.join(script_path, 'configs')
-    defaults_file = os.path.join(config_dir, 'defaults.json')
+    if not defaults_file_path:
+        file_name = 'defaults_{}.json'.format(suffix) if suffix else 'defaults.json'
+        defaults_file = os.path.join(config_dir, file_name)
+    else:
+        defaults_file = defaults_file_path
 
-    return defaults_file
+    return {
+        'dat_dir': dat_dir,
+        'config_dir': config_dir,
+        'defaults_file': defaults_file,
+    }
 
 
 def read_json(file_name):

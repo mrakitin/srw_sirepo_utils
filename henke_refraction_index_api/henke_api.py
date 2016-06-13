@@ -11,7 +11,7 @@ import requests
 
 from console_utils import convert_types, defaults_file, read_json
 
-DEFAULTS_FILE = defaults_file()
+DEFAULTS_FILE = defaults_file()['defaults_file']
 
 
 class Delta:
@@ -21,6 +21,9 @@ class Delta:
 
         self.defaults = d['defaults']
         self.parameters = convert_types(d['parameters'])
+
+        self.default_e_min = self.parameters['e_min']['type'](self.parameters['e_min']['default'])
+        self.default_e_max = self.parameters['e_max']['type'](self.parameters['e_max']['default'])
 
         for key, default_val in self.parameters.items():
             if key in kwargs.keys():
@@ -49,20 +52,17 @@ class Delta:
         print('Found delta={} for the closest energy={} eV.'.format(self.delta, self.closest_energy))
 
     def save_to_file(self):
-        def_e_min = self.parameters['e_min']['type'](self.parameters['e_min']['default'])
-        def_e_max = self.parameters['e_max']['type'](self.parameters['e_max']['default'])
-
-        self.e_min = def_e_min
-        self.e_max = def_e_min  # def_e_min + n_points * step
+        self.e_min = self.default_e_min
+        self.e_max = self.e_min
         counter = 0
         try:
             os.remove(self.outfile)
         except:
             pass
-        while self.e_max < def_e_max:
+        while self.e_max < self.default_e_max:
             self.e_max += self.n_points * self.e_step
-            if self.e_max > def_e_max:
-                self.e_max = def_e_max
+            if self.e_max > self.default_e_max:
+                self.e_max = self.default_e_max
 
             self._get_file_name()
             self._get_file_content()
@@ -78,7 +78,8 @@ class Delta:
             counter += 1
             self.e_min = self.e_max
 
-        print('Data from {} eV to {} eV saved to the <{}> file.'.format(def_e_min, def_e_max, self.outfile))
+        print('Data from {} eV to {} eV saved to the <{}> file.'.format(
+            self.default_e_min, self.default_e_max, self.outfile))
         print('Energy step: {} eV, number of points: {}, number of chunks {}.'.format(
             self.e_step, self.n_points, counter))
 
@@ -91,11 +92,15 @@ class Delta:
             if self.data_file:
                 import numpy as np
                 data = np.loadtxt(self.data_file, skiprows=skiprows)
+
+                self.default_e_min = data[0, energy_column]
+                self.default_e_max = data[-1, energy_column]
+
                 try:
                     idx_previous = np.where(data[:, energy_column] <= self.energy)[0][-1]
                     idx_next = np.where(data[:, energy_column] > self.energy)[0][0]
                 except IndexError:
-                    raise Exception(error_msg.format(data[0, energy_column], data[-1, energy_column]))
+                    raise Exception(error_msg.format(self.default_e_min, self.default_e_max))
 
                 idx = idx_previous if abs(data[idx_previous, energy_column] - self.energy) <= abs(
                     data[idx_next, energy_column] - self.energy) else idx_next
@@ -108,16 +113,21 @@ class Delta:
             if not self.content:
                 with open(self.data_file, 'r') as f:
                     self.raw_content = f.read()
-                    self.content = f.readlines()
             else:
                 if type(self.content) != list:
                     self.raw_content = self.content
-                    self.content = self.content.strip().split('\n')
+
+            self.content = self.raw_content.strip().split('\n')
+
             energies = []
             deltas = []
             for i in range(skiprows, len(self.content)):
                 energies.append(float(self.content[i].split()[energy_column]))
                 deltas.append(float(self.content[i].split()[delta_column]))
+
+            self.default_e_min = energies[0]
+            self.default_e_max = energies[-1]
+
             indices_previous = []
             indices_next = []
             try:
@@ -129,7 +139,7 @@ class Delta:
                 idx_previous = indices_previous[-1]
                 idx_next = indices_next[0]
             except IndexError:
-                raise Exception(error_msg.format(energies[0], energies[-1]))
+                raise Exception(error_msg.format(self.default_e_min, self.default_e_max))
 
             idx = idx_previous if abs(energies[idx_previous] - self.energy) <= abs(
                 energies[idx_next] - self.energy) else idx_next
