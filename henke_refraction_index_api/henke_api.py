@@ -31,6 +31,7 @@ class Delta:
         self.delta = None
         self.closest_energy = None
         self.content = None
+        self.raw_content = None
 
         if self.outfile:
             self.save_to_file()
@@ -106,9 +107,11 @@ class Delta:
         else:
             if not self.content:
                 with open(self.data_file, 'r') as f:
+                    self.raw_content = f.read()
                     self.content = f.readlines()
             else:
                 if type(self.content) != list:
+                    self.raw_content = self.content
                     self.content = self.content.strip().split('\n')
             energies = []
             deltas = []
