@@ -29,11 +29,12 @@ class Delta:
 
         self.delta = None
         self.closest_energy = None
-        self.data_file = None
         self.content = None
 
-        self._get_file_name()
-        self._get_file_content()
+        if not self.data_file:
+            self._get_file_name()
+            self._get_file_content()
+
         self._find_delta()
 
         self.print_info()

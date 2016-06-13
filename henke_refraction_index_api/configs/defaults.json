@@ -5,6 +5,12 @@
     },
     "description": "Get Index of Refraction from http://henke.lbl.gov/optical_constants/getdb2.html",
     "parameters": {
+        "data_file": {
+            "default": false,
+            "help": "use information from a saved file",
+            "short_argument": "i",
+            "type": "str"
+        },
         "e_max": {
             "default": 30000,
             "help": "the highest available energy [eV]",
