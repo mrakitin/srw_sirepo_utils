@@ -1,20 +1,27 @@
 #!/usr/bin/python
 
+import argparse
 import datetime
 import glob
 import os
 
-from dateutil import parser
+import dateutil.parser as dt_parser
 
 
-def predict_endtime(time_format='%Y-%m-%d %H:%M:%S'):
+def predict_endtime(log_file=None, time_format='%Y-%m-%d %H:%M:%S'):
     log_dir = '__srwl_logs__'
     if not os.path.isdir(log_dir):
         raise ValueError('{}: log dir not found'.format(log_dir))
 
-    logs = sorted(glob.glob(os.path.join(log_dir, '*.log')))
+    if not log_file:
+        logs = sorted(glob.glob(os.path.join(log_dir, '*.log')))
+        last_log = logs[-1]
+    else:
+        last_log = log_file
 
-    last_log = logs[-1]
+    if not os.path.isfile(last_log):
+        raise OSError('{}: file does not exist'.format(last_log))
+
     print('\nLog file   : {}'.format(last_log))
     with open(last_log) as f:
         content = f.readlines()
@@ -25,8 +32,8 @@ def predict_endtime(time_format='%Y-%m-%d %H:%M:%S'):
     print('Start row  : {}'.format(start_row))
     print('Current row: {}\n'.format(current_row))
 
-    start_timestamp = parser.parse(_parse_time(start_row)).timestamp()
-    current_timestamp = parser.parse(_parse_time(current_row)).timestamp()
+    start_timestamp = _get_timestamp(start_row)
+    current_timestamp = _get_timestamp(current_row)
 
     elapsed_time = current_timestamp - start_timestamp
 
@@ -40,6 +47,10 @@ def predict_endtime(time_format='%Y-%m-%d %H:%M:%S'):
     return end_time, elapsed_time, int(left_time)
 
 
+def _get_timestamp(s):
+    return dt_parser.parse(_parse_time(s)).timestamp()
+
+
 def _parse_progress(s):
     info_part = s.split(']:')[1].strip().split()
     return int(info_part[1]), int(info_part[4])
@@ -50,7 +61,11 @@ def _parse_time(s):
 
 
 if __name__ == '__main__':
-    end_time, elapsed_time, left_time = predict_endtime()
+    parser = argparse.ArgumentParser(description='Estimate end time of SRW partially-coherent simulations')
+    parser.add_argument('-l', '--log-file', dest='log_file', default=None, help='SRW log file to process')
+    args = parser.parse_args()
+
+    end_time, elapsed_time, left_time = predict_endtime(args.log_file)
     print('Estimated end time       : {}'.format(end_time))
     print('Elapsed/left time (h:m:s): {} / {} '.format(
         str(datetime.timedelta(seconds=elapsed_time)),
