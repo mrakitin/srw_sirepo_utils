@@ -32,12 +32,12 @@ def predict_endtime(time_format='%Y-%m-%d %H:%M:%S'):
 
     current_particle, total_particles = _parse_progress(current_row)
 
-    left_seconds = elapsed_time * (total_particles / float(current_particle) - 1)
+    left_time = elapsed_time * (total_particles / float(current_particle) - 1)
 
-    end_timestamp = current_timestamp + left_seconds
+    end_timestamp = current_timestamp + left_time
     end_time = datetime.datetime.fromtimestamp(end_timestamp).strftime(time_format)
 
-    return end_time, elapsed_time
+    return end_time, elapsed_time, int(left_time)
 
 
 def _parse_progress(s):
@@ -50,7 +50,12 @@ def _parse_time(s):
 
 
 if __name__ == '__main__':
-    end_time, elapsed_time = predict_endtime()
-    print('Estimated end time: {}'.format(end_time))
-    print('Elapsed time      : {} (h:m:s)'.format(str(datetime.timedelta(seconds=elapsed_time))))
-
+    end_time, elapsed_time, left_time = predict_endtime()
+    print('Estimated end time       : {}'.format(end_time))
+    print('Elapsed/left time (h:m:s): {} / {} '.format(
+        str(datetime.timedelta(seconds=elapsed_time)),
+        str(datetime.timedelta(seconds=left_time)),
+    ))
+    print('Total duration (h:m:s)   : {}'.format(
+        str(datetime.timedelta(seconds=elapsed_time + left_time)),
+    ))
