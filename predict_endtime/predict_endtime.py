@@ -8,10 +8,6 @@ from dateutil import parser
 
 
 def predict_endtime(time_format='%Y-%m-%d %H:%M:%S'):
-    # parser = argparse.ArgumentParser(description='Estimate/predict endtime of an SRW partially-coherent simulation')
-    # parser.add_argument('-l', '--log-file', dest='log_file', default=None, choices=('chx', 'CHX', 'smi', 'SMI'),
-    #                     help='select beamline to get data from')
-
     log_dir = '__srwl_logs__'
     if not os.path.isdir(log_dir):
         raise ValueError('{}: log dir not found'.format(log_dir))
@@ -19,27 +15,29 @@ def predict_endtime(time_format='%Y-%m-%d %H:%M:%S'):
     logs = sorted(glob.glob(os.path.join(log_dir, '*.log')))
 
     last_log = logs[-1]
+    print('\nLog file   : {}'.format(last_log))
     with open(last_log) as f:
         content = f.readlines()
         assert len(content) > 1, '{}: content length is too short'.format(len(content))
 
-    start_row = content[0]
-    end_row = content[-1]
+    start_row = content[0].strip()
+    current_row = content[-1].strip()
+    print('Start row  : {}'.format(start_row))
+    print('Current row: {}\n'.format(current_row))
 
     start_timestamp = parser.parse(_parse_time(start_row)).timestamp()
-    end_timestamp = parser.parse(_parse_time(end_row)).timestamp()
+    current_timestamp = parser.parse(_parse_time(current_row)).timestamp()
 
-    elapsed_time = end_timestamp - start_timestamp
+    elapsed_time = current_timestamp - start_timestamp
 
-    current_particle, total_particles = _parse_progress(end_row)
-    left_particles_ratio = float(total_particles - current_particle) / float(total_particles)
+    current_particle, total_particles = _parse_progress(current_row)
 
-    left_seconds = elapsed_time * total_particles / float(current_particle)
+    left_seconds = elapsed_time * (total_particles / float(current_particle) - 1)
 
-    total_timestamp = end_timestamp + left_seconds
-    end_time = datetime.datetime.fromtimestamp(total_timestamp).strftime(time_format)
+    end_timestamp = current_timestamp + left_seconds
+    end_time = datetime.datetime.fromtimestamp(end_timestamp).strftime(time_format)
 
-    return end_time
+    return end_time, elapsed_time
 
 
 def _parse_progress(s):
@@ -52,5 +50,7 @@ def _parse_time(s):
 
 
 if __name__ == '__main__':
-    end_time = predict_endtime()
+    end_time, elapsed_time = predict_endtime()
     print('Estimated end time: {}'.format(end_time))
+    print('Elapsed time      : {} (h:m:s)'.format(str(datetime.timedelta(seconds=elapsed_time))))
+
