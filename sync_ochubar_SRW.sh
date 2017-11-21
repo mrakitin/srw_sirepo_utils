@@ -8,7 +8,8 @@
 #     misc. updates/fixes in C++ and Python parts
 
 master=$HOME/src/ochubar/SRW
-fork=$HOME/src/mrakitin/SRW
+# fork=$HOME/src/mrakitin/SRW
+fork=$HOME/src/radiasoft/SRW-light
 idir=$PWD
 
 cd $master
@@ -20,15 +21,15 @@ for i in $(seq 1 $(echo "$list_of_files" | wc -l)); do
     line=$(echo "$list_of_files" | head -$i | tail -1)
     stat=$(echo $line | awk -F' ' '{print $1}')
     file=$(echo $line | awk -F' ' '{print $2}')
+    echo ""
     if [ "$stat" == "D" ]; then
-        echo ""
         echo "File: ===$file==="
         echo "Stat: ===$stat==="
         cd $fork
-	echo git rm $file
+	git rm $file
 	cd $master
     else
-        echo cp -v $master/$file $fork/$file
+        cp -v $master/$file $fork/$file
     fi 
 done
 
