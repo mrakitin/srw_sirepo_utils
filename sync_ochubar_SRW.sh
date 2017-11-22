@@ -14,7 +14,8 @@ idir=$PWD
 
 cd $master
 
-commit='6af042462fa2e5d15548836bec784ff82b888f7d'
+# commit='6af042462fa2e5d15548836bec784ff82b888f7d'
+commit=$(git rev-parse HEAD)
 list_of_files=$(git show --name-status --pretty=format: $commit)
 
 for i in $(seq 1 $(echo "$list_of_files" | wc -l)); do
