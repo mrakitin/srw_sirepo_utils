@@ -12,7 +12,8 @@ from tqdm import tqdm
 from chx_spectrum import chx_spectrum
 
 # List of By magnetic fields to test:
-magn_field_range = np.linspace(0.5, 1.0, 51)
+# magn_field_range = np.linspace(0.5, 1.0, 51)
+magn_field_range = [0.51]
 columns = ['magn_field', 'energy', 'delta', 'atten']
 scan_plan = pd.DataFrame(columns=columns)
 
@@ -42,10 +43,13 @@ for und_by in tqdm(magn_field_range):
 
     # https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.find_peaks_cwt.html
     # https://stackoverflow.com/a/25580682
-    idx = find_peaks_cwt(df['y_values'], np.arange(1, 30), noise_perc=0.1)
+    idx = find_peaks_cwt(df['y_values'], np.arange(1, 30), noise_perc=0.01)
+
+    # Filter noise:
+    idx_filt = idx[np.where(df['y_values'][idx] > df['y_values'].max() * 0.001)[0]]
 
     # 5th harmonic:
-    harm5_idx = idx[2]
+    harm5_idx = idx_filt[2]
     energy_harm5 = df['x_values'][harm5_idx]
     intensity_harm5 = df['y_values'][harm5_idx]
     tqdm.write('''
@@ -58,13 +62,13 @@ for und_by in tqdm(magn_field_range):
     if plot:
         plt.figure()
         plt.plot(df['x_values'], df['y_values'])
-        plt.scatter(df['x_values'][idx], df['y_values'][idx])
+        plt.scatter(df['x_values'][idx_filt], df['y_values'][idx_filt])
         plt.xlim (0, x_max)
         plt.ylim (0, 1.1*y_values.max())
         # for i in idx:
         #     print('x: {}    ymax: {}'.format(df['x_values'][i], df['y_values'][i]))
         #     plt.vlines(x=df['x_values'][i], ymin=0, ymax=df['y_values'][i], color='red')
-        plt.scatter(df['x_values'][idx[2]], df['y_values'][idx[2]], s=200, color='green')
+        plt.scatter(df['x_values'][harm5_idx], df['y_values'][harm5_idx], s=200, color='green')
         plt.title('Harmonic #5 index: {}  Energy: {}\nIntensity: {}'.format(harm5_idx, energy_harm5, intensity_harm5))
         plt.xlabel('Energy [eV]')
         plt.xlabel('Intensity [ph/s/.1%bw/mm^2]')
