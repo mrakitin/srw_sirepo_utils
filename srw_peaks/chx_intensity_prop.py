@@ -192,7 +192,7 @@ varParam = srwl_bl.srwl_uti_ext_options([
     ['si_type', 'i', 0, 'type of a characteristic to be extracted after calculation of intensity distribution: 0- Single-Electron Intensity, 1- Multi-Electron Intensity, 2- Single-Electron Flux, 3- Multi-Electron Flux, 4- Single-Electron Radiation Phase, 5- Re(E): Real part of Single-Electron Electric Field, 6- Im(E): Imaginary part of Single-Electron Electric Field, 7- Single-Electron Intensity, integrated over Time or Photon Energy'],
     ['w_mag', 'i', 1, 'magnetic field to be used for calculation of intensity distribution vs horizontal and vertical position: 1- approximate, 2- accurate'],
 
-    ['si_fn', 's', 'res_int_se.dat', 'file name for saving calculated single-e intensity distribution (without wavefront propagation through a beamline) vs horizontal and vertical position'],
+    ['si_fn', 's', '', 'file name for saving calculated single-e intensity distribution (without wavefront propagation through a beamline) vs horizontal and vertical position'],
     ['si_pl', 's', '', 'plot the input intensity distributions in graph(s): ""- dont plot, "x"- vs horizontal position, "y"- vs vertical position, "xy"- vs horizontal and vertical position'],
     ['ws_fni', 's', 'res_int_pr_se.dat', 'file name for saving propagated single-e intensity distribution vs horizontal and vertical position'],
     ['ws_pl', 's', '', 'plot the resulting intensity distributions in graph(s): ""- dont plot, "x"- vs horizontal position, "y"- vs vertical position, "xy"- vs horizontal and vertical position'],
@@ -219,14 +219,29 @@ varParam = srwl_bl.srwl_uti_ext_options([
 ])
 
 
-def chx_intensity_prop():
+def chx_intensity_prop(delta, atten, w_e, ws_fni):
     v = srwl_bl.srwl_uti_parse_options(varParam, use_sys_argv=False)
     source_type, mag = srwl_bl.setup_source(v)
+
+    # Apply input arguments:
+    v.delta = delta
+    v.atten = atten
+    v.w_e = w_e
+    v.ws_fni = ws_fni
+
     op = set_optics(v)
     v.ws = True
-    v.ws_pl = 'xy'
+    # v.ws_pl = 'xy'
     srwl_bl.SRWLBeamline(_name=v.name, _mag_approx=mag).calc_all(v, op)
 
-
 if __name__ == '__main__':
-    chx_intensity_prop()
+    import pandas as pd
+    from tqdm import tqdm
+    d = pd.read_json('scan_plan.json')
+    for i in tqdm(range(len(d))):
+        chx_intensity_prop(
+            delta=d['delta'][i],
+            atten=d['atten'][i],
+            w_e=d['energy'][i],
+            ws_fni='res_intensity_energy_{:.3f}.dat'.format(d['energy'][i])
+        )

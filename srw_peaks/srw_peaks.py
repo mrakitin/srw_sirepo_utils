@@ -1,13 +1,13 @@
 # coding: utf-8
 
 import re
-from pprint import pprint
 
 import bnlcrl.pkcli.simulate
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks_cwt
+from tqdm import tqdm
 
 from chx_spectrum import chx_spectrum
 
@@ -16,7 +16,7 @@ magn_field_range = np.linspace(0.6, 0.9, 5)
 columns = ['magn_field', 'energy', 'delta', 'atten']
 scan_plan = pd.DataFrame(columns=columns)
 
-for und_by in magn_field_range:
+for und_by in tqdm(magn_field_range):
     # Calculate the spectrum:
     res_file = 'res_spectrum_und_by_{:.3f}.dat'.format(und_by)
     chx_spectrum(und_by=und_by, ss_fn=res_file)
@@ -48,7 +48,7 @@ for und_by in magn_field_range:
     harm5_idx = idx[2]
     energy_harm5 = df['x_values'][harm5_idx]
     intensity_harm5 = df['y_values'][harm5_idx]
-    print('''
+    tqdm.write('''
         Harmonic index: {}
         Energy        : {}
         Intensity     : {}
@@ -74,12 +74,12 @@ for und_by in magn_field_range:
     # Find refractive index decrement and attenuation length for found energy
     # Index of refraction:
     delta_dict = bnlcrl.pkcli.simulate.find_delta(energy=energy_harm5, formula='Be', characteristic='delta', data_file='Be_delta.dat')
-    pprint(delta_dict)
+    # print(delta_dict)
     delta = delta_dict['characteristic_value']
 
     # ### Attenuation length:
     atten_dict = bnlcrl.pkcli.simulate.find_delta(energy=energy_harm5, formula='Be', characteristic='atten', data_file='Be_atten.dat')
-    pprint(atten_dict)
+    # print(atten_dict)
     atten = atten_dict['characteristic_value']
 
     scan_plan = scan_plan.append({
@@ -88,8 +88,8 @@ for und_by in magn_field_range:
         'delta': delta,
         'atten': atten,
     }, ignore_index=True)
-    print('')
 
+print('\n\n')
 print(scan_plan)
 # scan_plan.to_csv('scan_plan.csv')
 scan_plan.to_json('scan_plan.json')
