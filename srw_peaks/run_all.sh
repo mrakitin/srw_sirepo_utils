@@ -1,6 +1,6 @@
 #/bin/bash
 
-source activate sirepo
+source activate srw-peaks
 
 python srw_peaks.py  # calls chx_spectrum.py inside
 

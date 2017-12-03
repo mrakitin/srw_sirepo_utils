@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source activate sirepo
+source activate srw-peaks
 
 for f in res_intensity_*.dat; do
     DISPLAY= python $SRWPATH/SRWLIB_ExampleViewDataFile.py -j -f $f
