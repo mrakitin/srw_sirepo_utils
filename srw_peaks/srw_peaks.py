@@ -12,8 +12,7 @@ from tqdm import tqdm
 from chx_spectrum import chx_spectrum
 
 # List of By magnetic fields to test:
-# magn_field_range = np.linspace(0.5, 1.0, 51)
-magn_field_range = [0.51]
+magn_field_range = np.linspace(0.5, 1.0, 51)
 columns = ['magn_field', 'energy', 'delta', 'atten']
 scan_plan = pd.DataFrame(columns=columns)
 
