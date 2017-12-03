@@ -219,7 +219,7 @@ varParam = srwl_bl.srwl_uti_ext_options([
 ])
 
 
-def chx_intensity_prop(delta, atten, w_e, ws_fni):
+def chx_intensity(delta, atten, w_e, ws_fni):
     v = srwl_bl.srwl_uti_parse_options(varParam, use_sys_argv=False)
     source_type, mag = srwl_bl.setup_source(v)
 
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     from tqdm import tqdm
     d = pd.read_json('scan_plan.json')
     for i in tqdm(range(len(d))):
-        chx_intensity_prop(
+        chx_intensity(
             delta=d['delta'][i],
             atten=d['atten'][i],
             w_e=d['energy'][i],
