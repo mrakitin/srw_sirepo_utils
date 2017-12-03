@@ -12,7 +12,7 @@ from tqdm import tqdm
 from chx_spectrum import chx_spectrum
 
 # List of By magnetic fields to test:
-magn_field_range = np.linspace(0.5, 1.0, 51)
+magn_field_range = np.linspace(0.5, 1.0, 21)
 columns = ['magn_field', 'energy', 'delta', 'atten']
 scan_plan = pd.DataFrame(columns=columns)
 
@@ -52,10 +52,11 @@ for und_by in tqdm(magn_field_range):
     energy_harm5 = df['x_values'][harm5_idx]
     intensity_harm5 = df['y_values'][harm5_idx]
     tqdm.write('''
+        Magnetic field: {:.3f} [T]
         Harmonic index: {}
-        Energy        : {}
+        Energy        : {:.3f} [eV]
         Intensity     : {}
-    '''.format(harm5_idx, energy_harm5, intensity_harm5))
+    '''.format(und_by, harm5_idx, energy_harm5, intensity_harm5))
 
     plot = True
     if plot:
@@ -68,11 +69,16 @@ for und_by in tqdm(magn_field_range):
         #     print('x: {}    ymax: {}'.format(df['x_values'][i], df['y_values'][i]))
         #     plt.vlines(x=df['x_values'][i], ymin=0, ymax=df['y_values'][i], color='red')
         plt.scatter(df['x_values'][harm5_idx], df['y_values'][harm5_idx], s=200, color='green')
-        plt.title('Harmonic #5 index: {}  Energy: {}\nIntensity: {}'.format(harm5_idx, energy_harm5, intensity_harm5))
+        plt.title('By: {:.3f} [T] | Energy: {:.3f} [eV]\nHarm. #5 idx: {} | Intensity: {}'.format(
+            und_by, energy_harm5,
+            harm5_idx, intensity_harm5,
+        ))
         plt.xlabel('Energy [eV]')
         plt.xlabel('Intensity [ph/s/.1%bw/mm^2]')
+        plt.grid()
         plt.savefig('{}.png'.format(res_file))
-
+        plt.clf()
+        plt.close()
 
     # Find refractive index decrement and attenuation length for found energy
     # Index of refraction:
