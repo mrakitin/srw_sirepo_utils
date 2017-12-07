@@ -102,7 +102,10 @@ for und_by in tqdm(magn_field_range):
         'atten': atten,
     }, ignore_index=True)
 
-print('\n\n')
-print(scan_plan)
 # scan_plan.to_csv('scan_plan.csv')
 scan_plan.to_json('scan_plan.json')
+
+pd.set_option('precision', 5)
+print('\n\n{}'.format(scan_plan))
+with open('scan_plan.txt', 'w') as f:
+    f.write(scan_plan.to_string())
