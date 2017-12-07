@@ -243,5 +243,5 @@ if __name__ == '__main__':
             delta=d['delta'][i],
             atten=d['atten'][i],
             w_e=d['energy'][i],
-            ws_fni='res_intensity_energy_{:.3f}.dat'.format(d['energy'][i])
+            ws_fni='res_intensity_energy_{:09.3f}.dat'.format(d['energy'][i])
         )
